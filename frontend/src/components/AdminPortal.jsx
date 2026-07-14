@@ -159,6 +159,22 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
     }
   };
 
+  const getShortSubject = (subject) => {
+    if (!subject) return '—';
+    const parenMatch = subject.match(/\(([^)]+)\)/);
+    if (parenMatch) {
+      return parenMatch[1];
+    }
+    const lower = subject.toLowerCase();
+    if (lower.includes('machine learning')) return 'ML';
+    if (lower.includes('deep learning')) return 'DL';
+    if (lower.includes('computer networks')) return 'CN';
+    if (lower.includes('software engineering')) return 'SE';
+    if (lower.includes('universal human values')) return 'UHV';
+    if (lower.includes('discrete mathematics')) return 'DM';
+    return subject.substring(0, 8);
+  };
+
   const handleStudentsUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -1507,7 +1523,7 @@ Floor: Room1, Room2, ..."
                                                 {leftSeat.roll_number.slice(-4)}
                                               </span>
                                               <span style={{ fontSize: '0.45rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', marginTop: '2px' }} title={leftSeat.subject}>
-                                                {leftSeat.subject.substring(0, 8)}
+                                                {getShortSubject(leftSeat.subject)}
                                               </span>
                                             </>
                                           ) : (
@@ -1534,7 +1550,7 @@ Floor: Room1, Room2, ..."
                                                 {rightSeat.roll_number.slice(-4)}
                                               </span>
                                               <span style={{ fontSize: '0.45rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', marginTop: '2px' }} title={rightSeat.subject}>
-                                                {rightSeat.subject.substring(0, 8)}
+                                                {getShortSubject(rightSeat.subject)}
                                               </span>
                                             </>
                                           ) : (
@@ -1571,7 +1587,7 @@ Floor: Room1, Room2, ..."
                                               {seat.roll_number.slice(-4)}
                                             </span>
                                             <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '0 2px' }} title={seat.subject}>
-                                              {seat.subject.substring(0, 10)}
+                                              {getShortSubject(seat.subject)}
                                             </span>
                                           </>
                                         ) : (
