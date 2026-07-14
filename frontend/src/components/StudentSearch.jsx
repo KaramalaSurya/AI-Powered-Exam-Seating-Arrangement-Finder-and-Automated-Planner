@@ -46,6 +46,22 @@ export default function StudentSearch() {
     window.print();
   };
 
+  const getShortSubject = (subject) => {
+    if (!subject) return '—';
+    const parenMatch = subject.match(/\(([^)]+)\)/);
+    if (parenMatch) {
+      return parenMatch[1];
+    }
+    const lower = subject.toLowerCase();
+    if (lower.includes('machine learning')) return 'ML';
+    if (lower.includes('deep learning')) return 'DL';
+    if (lower.includes('computer networks')) return 'CN';
+    if (lower.includes('software engineering')) return 'SE';
+    if (lower.includes('universal human values')) return 'UHV';
+    if (lower.includes('discrete mathematics')) return 'DM';
+    return subject.substring(0, 8);
+  };
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       {/* Search Bar Panel */}
@@ -279,8 +295,8 @@ export default function StudentSearch() {
                           <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>
                             {cell.left.roll === 'Empty' ? '—' : cell.left.roll.slice(-4)}
                           </span>
-                          <span className="seat-label">
-                            {result.seating_details.students_per_bench === 1 ? 'Seat' : 'Left'}
+                          <span className="seat-label" style={{ fontSize: '0.55rem', opacity: 0.8 }}>
+                            {cell.left.roll === 'Empty' ? 'Vacant' : getShortSubject(cell.left.subject)}
                           </span>
                         </div>
                       )}
@@ -294,7 +310,9 @@ export default function StudentSearch() {
                           <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>
                             {cell.right.roll === 'Empty' ? '—' : cell.right.roll.slice(-4)}
                           </span>
-                          <span className="seat-label">Right</span>
+                          <span className="seat-label" style={{ fontSize: '0.55rem', opacity: 0.8 }}>
+                            {cell.right.roll === 'Empty' ? 'Vacant' : getShortSubject(cell.right.subject)}
+                          </span>
                         </div>
                       )}
                     </div>
