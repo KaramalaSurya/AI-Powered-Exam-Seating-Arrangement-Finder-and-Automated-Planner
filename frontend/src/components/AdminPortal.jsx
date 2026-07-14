@@ -78,6 +78,10 @@ export default function AdminPortal({ token, onLogout }) {
   const [newSessionName, setNewSessionName] = useState('');
   const [studentsPerBench, setStudentsPerBench] = useState(1);
   
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [deletingSession, setDeletingSession] = useState(false);
+  
   // File uploading states
   const [uploading, setUploading] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
@@ -497,13 +501,33 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
     }
   };
 
-  const handleDeleteSession = async (sessId) => {
-    if (!confirm('Are you sure you want to delete this session? All allocated seating ranges will be lost.')) return;
+  const handleDeleteSession = (sessId, sessName) => {
+    setDeleteConfirmId(sessId);
+    setDeleteConfirmName(sessName);
+  };
+
+  const executeDeleteSession = async () => {
+    if (!deleteConfirmId) return;
+    setDeletingSession(true);
     try {
-      const res = await fetch(`http://localhost:8085/api/admin/sessions/${sessId}`, {
+      const res = await fetch(`http://localhost:8085/api/admin/sessions/${deleteConfirmId}`, {
         method: 'DELETE'
       });
       if (res.ok) {
+        if (activeSessionId === deleteConfirmId) {
+          const remaining = sessions.filter(s => s.id !== deleteConfirmId);
+          if (remaining.length > 0) {
+            setActiveSessionId(remaining[0].id);
+            await fetch(`http://localhost:8085/api/admin/sessions/${remaining[0].id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ is_active: true })
+            });
+          } else {
+            setActiveSessionId('');
+          }
+        }
+        setDeleteConfirmId(null);
         fetchSessions();
         fetchStats();
       } else {
@@ -513,6 +537,8 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
     } catch (e) {
       console.error(e);
       alert('Failed to connect to backend server: ' + e.message + '\n\nPlease ensure the backend API is running.');
+    } finally {
+      setDeletingSession(false);
     }
   };
 
@@ -1057,7 +1083,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
                     >
                       {s.is_active ? 'Deactivate' : 'Activate'}
                     </button>
-                    <button onClick={() => handleDeleteSession(s.id)} style={{ border: 'none', background: 'transparent', color: 'rgba(239, 68, 68, 0.6)', cursor: 'pointer', padding: '0.2rem' }}>
+                    <button onClick={() => handleDeleteSession(s.id, s.name)} style={{ border: 'none', background: 'transparent', color: 'rgba(239, 68, 68, 0.6)', cursor: 'pointer', padding: '0.2rem' }}>
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -1684,6 +1710,64 @@ Floor: Room1, Room2, ..."
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               The API key is stored securely in your local SQLite settings table and is never sent to external servers other than directly to the Google Gemini SDK.
             </p>
+          </div>
+        </div>
+      )}
+      {/* Custom Glassmorphic Confirmation Modal */}
+      {deleteConfirmId && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '1rem'
+        }}>
+          <div className="glass-panel animate-fade-in" style={{
+            maxWidth: '450px',
+            width: '100%',
+            padding: '2rem',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)'
+          }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fca5a5', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+              <ShieldAlert size={24} style={{ color: '#ef4444' }} /> Confirm Session Deletion
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: '1.5', marginBottom: '1.5rem' }}>
+              Are you sure you want to permanently delete the examination session <strong style={{ color: 'var(--primary)' }}>"{deleteConfirmName}"</strong>? 
+              This will cascade delete all allocated classrooms, seating grids, registrations, and student lookups.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+              <button 
+                onClick={() => setDeleteConfirmId(null)} 
+                className="btn-secondary"
+                disabled={deletingSession}
+                style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem' }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={executeDeleteSession} 
+                className="btn-primary"
+                disabled={deletingSession}
+                style={{ 
+                  background: '#ef4444', 
+                  borderColor: '#ef4444', 
+                  color: '#fff',
+                  padding: '0.5rem 1.25rem',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem'
+                }}
+              >
+                {deletingSession ? <RefreshCw className="spinner" size={14} /> : <Trash2 size={14} />}
+                {deletingSession ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}
