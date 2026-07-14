@@ -1,11 +1,27 @@
-import React, { useState } from 'react';
-import { Search, MapPin, Calendar, Clock, BookOpen, Download, User, QrCode, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, MapPin, Calendar, Clock, BookOpen, Download, User, QrCode, RefreshCw, Bell } from 'lucide-react';
 
 export default function StudentSearch() {
   const [rollNumber, setRollNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+  const [activeSession, setActiveSession] = useState('');
+
+  useEffect(() => {
+    const fetchActiveSession = async () => {
+      try {
+        const res = await fetch('http://localhost:8085/api/admin/dashboard-stats');
+        const data = await res.json();
+        if (data.active_session && data.active_session !== 'None') {
+          setActiveSession(data.active_session);
+        }
+      } catch (e) {
+        console.error('Failed to fetch active session:', e);
+      }
+    };
+    fetchActiveSession();
+  }, []);
 
   // Sample roll numbers for testing
   const suggestions = [
@@ -64,6 +80,40 @@ export default function StudentSearch() {
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      
+      {/* Announcement Notification Banner */}
+      {activeSession && (
+        <div className="glass-panel" style={{ 
+          padding: '1.25rem 2rem', 
+          background: 'rgba(59,130,246,0.04)', 
+          border: '1px solid rgba(59,130,246,0.15)',
+          borderRadius: '8px', 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '1.25rem',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+          animation: 'pulseBorder 2.5s infinite'
+        }}>
+          <div style={{
+            background: 'var(--primary)',
+            borderRadius: '50%',
+            padding: '0.45rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 0 10px var(--primary)'
+          }}>
+            <Bell size={18} style={{ color: 'white' }} />
+          </div>
+          <div>
+            <h4 style={{ margin: 0, fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)' }}>Seating Arrangements Released!</h4>
+            <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Seating maps for <strong style={{ color: 'var(--primary)' }}>{activeSession}</strong> have been published. Enter your Hall Ticket/Roll Number below.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Search Bar Panel */}
       <div className="glass-panel" style={{ padding: '2rem' }}>
         <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', fontWeight: 700 }}>Find Your Seating</h2>
