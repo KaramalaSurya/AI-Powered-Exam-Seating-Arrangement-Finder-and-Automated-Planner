@@ -19,6 +19,73 @@ An AI-powered, high-performance examination seating arrangement coordinator and 
 
 ---
 
+## 📐 System Architecture
+
+### A. Complete System & Planner Engine Flow (Mermaid Diagram)
+
+```mermaid
+graph TD
+    %% Frontend Clients
+    subgraph Client [Client Presentation Layer]
+        Admin[Admin Dashboard UI]
+        Finder[Student Search Lookup Portal]
+    end
+
+    %% API endpoints
+    subgraph API [REST API Layer]
+        UploadRoute["POST /api/admin/upload"]
+        PlannerRoute["POST /api/admin/run-allocation"]
+        SearchRoute["GET /api/student/search"]
+    end
+
+    %% Backend Engines
+    subgraph Engines [Core Orchestrators & Planner Engines]
+        Orchestrator[AI Orchestrator]
+        Planner[12-12 Seating Planner Engine]
+        SearchService[Search Service Optimizer]
+    end
+
+    %% Agents
+    subgraph Agents [Dedicated AI & Seat Resolution Agents]
+        ExtractAgent[Document Extraction Agent]
+        OCRAgent[Gemini Vision OCR Agent]
+        ParsingAgent[LLM Parsing Agent]
+        ValidAgent[Validation Agent]
+        SeatMapAgent[Seat Mapping Agent]
+    end
+
+    %% SQLite Database
+    subgraph Storage [Database Persistence Layer]
+        DB[(SQLite Database)]
+    end
+
+    %% Connectors
+    Admin -->|Upload notice| UploadRoute
+    Admin -->|Configure slot & capacity| PlannerRoute
+    Finder -->|Search Roll Number| SearchRoute
+    
+    UploadRoute --> Orchestrator
+    PlannerRoute --> Planner
+    SearchRoute --> SearchService
+    
+    Orchestrator --> ExtractAgent
+    Orchestrator --> OCRAgent
+    Orchestrator --> ParsingAgent
+    Orchestrator --> ValidAgent
+    
+    Planner -->|Checkerboard algorithm| DB
+    ValidAgent -->|Validate overlaps| DB
+    SearchService -->|Direct range scan| DB
+    SearchService --> SeatMapAgent
+    SeatMapAgent -->|Map to exact row/col/side| Finder
+```
+
+### B. Core AI Ingestion Pipeline (Flow Chart Diagram)
+
+![Original System Ingestion Flow](assets/architecture_original.png)
+
+---
+
 ## 🛠️ Technology Stack
 
 * **Backend**: Python 3.10+, FastAPI, SQLite (sqlite3), ReportLab, pdfplumber, openpyxl.
