@@ -1,4 +1,4 @@
-# MITS Seating Arrangement Finder & Automated Planner
+# AI-Powered-Exam-Seating-Arrangement-Finder-and-Automated-Planner
 
 An AI-powered, high-performance examination seating arrangement coordinator and public student finder portal. This application streamlines institutional exam coordination through automated mixed-subject checkerboard seat planning, AI document digitisation, multi-session active searches, and visual door chart generation.
 
