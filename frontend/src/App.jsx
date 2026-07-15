@@ -32,7 +32,7 @@ export default function App() {
       {/* Top Navigation & Branding Header */}
       <header className="animate-fade-in">
         <a href="/" className="logo" onClick={(e) => { e.preventDefault(); setView('student'); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem' }}>
-          <img src="/favicon.png" alt="Alloc8 Logo" style={{ height: '72px', objectFit: 'contain', background: '#ffffff', padding: '4px', borderRadius: '8px' }} />
+          <img src="/favicon.png" alt="Alloc8 Logo" style={{ height: '48px', objectFit: 'contain', background: '#ffffff', padding: '6px 16px', borderRadius: '8px', boxShadow: '0 0 10px rgba(255,255,255,0.05)' }} />
           <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.03em', textTransform: 'uppercase', margin: 0 }}>
             AI-Powered Examination Seating Planning and Student Seating Finder System
           </p>
