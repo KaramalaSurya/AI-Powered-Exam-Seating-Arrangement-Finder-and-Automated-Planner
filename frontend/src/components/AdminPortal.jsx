@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Plus, Trash2, CheckCircle, AlertTriangle, AlertCircle, Play, Eye, FileText, Database, ShieldAlert, Key, Settings, RefreshCw, Layers, Download, Check } from 'lucide-react';
+import { API_BASE_URL } from '../config';
+
 
 function expandRangeList(prefix, startStr, endStr) {
   prefix = String(prefix || "").trim();
@@ -64,8 +66,11 @@ function expandRangeList(prefix, startStr, endStr) {
 
 export default function AdminPortal({ token, onLogout }) {
   const fetch = async (url, options = {}) => {
+    const targetUrl = url.startsWith('http://localhost:8085') 
+      ? url.replace('http://localhost:8085', API_BASE_URL) 
+      : url;
     try {
-      const res = await window.fetch(url, {
+      const res = await window.fetch(targetUrl, {
         ...options,
         headers: {
           ...options.headers,

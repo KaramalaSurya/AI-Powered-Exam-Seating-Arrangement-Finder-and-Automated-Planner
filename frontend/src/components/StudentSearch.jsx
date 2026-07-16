@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, MapPin, Calendar, Clock, BookOpen, Download, User, QrCode, RefreshCw, Bell } from 'lucide-react';
+import { API_BASE_URL } from '../config';
+
 
 export default function StudentSearch() {
   const [rollNumber, setRollNumber] = useState('');
@@ -13,7 +15,7 @@ export default function StudentSearch() {
   useEffect(() => {
     const fetchActiveSession = async () => {
       try {
-        const res = await fetch('http://localhost:8085/api/student/active-sessions');
+        const res = await fetch(`${API_BASE_URL}/api/student/active-sessions`);
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
           setActiveSession(data.map(s => s.name).join(', '));
@@ -27,7 +29,7 @@ export default function StudentSearch() {
     
     const fetchActiveSlots = async () => {
       try {
-        const res = await fetch('http://localhost:8085/api/student/active-slots');
+        const res = await fetch(`${API_BASE_URL}/api/student/active-slots`);
         const data = await res.json();
         if (Array.isArray(data)) {
           setActiveSlots(data);
@@ -62,7 +64,7 @@ export default function StudentSearch() {
     setResult(null);
 
     try {
-      const response = await fetch(`http://localhost:8085/api/student/search?roll_number=${encodeURIComponent(targetRoll.trim())}`);
+      const response = await fetch(`${API_BASE_URL}/api/student/search?roll_number=${encodeURIComponent(targetRoll.trim())}`);
       const data = await response.json();
       
       if (!response.ok) {

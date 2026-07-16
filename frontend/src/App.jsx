@@ -3,6 +3,7 @@ import StudentSearch from './components/StudentSearch';
 import AdminPortal from './components/AdminPortal';
 import AdminLogin from './components/AdminLogin';
 import { GraduationCap, User, ShieldCheck, HelpCircle } from 'lucide-react';
+import { API_BASE_URL } from './config';
 
 export default function App() {
   const [view, setView] = useState('student'); // 'student', 'admin'
@@ -13,7 +14,7 @@ export default function App() {
     // Check if backend API is online
     const checkBackend = async () => {
       try {
-        const res = await fetch('http://localhost:8085/');
+        const res = await fetch(`${API_BASE_URL}/`);
         const data = await res.json();
         if (data.status === 'online') {
           setBackendStatus('online');

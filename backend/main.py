@@ -1,4 +1,10 @@
 import uvicorn
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env
+load_dotenv()
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -8,6 +14,7 @@ from backend.routes import router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+
     # Initialize SQLite database and populate sample data if empty
     init_db()
     yield
@@ -67,4 +74,7 @@ def home():
     }
 
 if __name__ == "__main__":
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8085, reload=True)
+    port = int(os.environ.get("PORT", 8085))
+    host = os.environ.get("HOST", "0.0.0.0")
+    uvicorn.run("backend.main:app", host=host, port=port, reload=True)
+

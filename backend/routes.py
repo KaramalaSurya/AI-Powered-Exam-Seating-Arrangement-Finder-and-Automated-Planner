@@ -63,6 +63,8 @@ class IngestionSaveRequest(BaseModel):
     ranges: List[SeatingRangeSave]
 
 
+import os
+
 # --- Helper to get API Key from DB ---
 def get_gemini_api_key() -> Optional[str]:
     conn = get_db_connection()
@@ -70,7 +72,9 @@ def get_gemini_api_key() -> Optional[str]:
     cursor.execute("SELECT value FROM settings WHERE key = 'GEMINI_API_KEY'")
     row = cursor.fetchone()
     conn.close()
-    return row["value"] if row else None
+    if row and row["value"]:
+        return row["value"]
+    return os.environ.get("GEMINI_API_KEY")
 
 
 # ==========================================

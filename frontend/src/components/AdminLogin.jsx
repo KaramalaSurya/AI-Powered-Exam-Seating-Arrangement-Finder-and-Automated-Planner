@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Lock, ArrowRight, RefreshCw } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 export default function AdminLogin({ onLoginSuccess }) {
   const [password, setPassword] = useState('');
@@ -17,7 +18,7 @@ export default function AdminLogin({ onLoginSuccess }) {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:8085/api/admin/login', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
