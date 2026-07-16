@@ -334,7 +334,10 @@ export default function StudentSearch() {
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px dashed var(--border-color)', paddingBottom: '1.25rem' }}>
               <div>
-                <span className="badge badge-info" style={{ marginBottom: '0.5rem' }}>MITS HALL TICKET SLIP</span>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                  <span className="badge badge-info">MITS HALL TICKET SLIP</span>
+                  <span className="badge badge-success" style={{ fontWeight: 700 }}>★ ALL THE BEST ★</span>
+                </div>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }} className="text-gradient">{result.session_name}</h3>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Madanapalle Inst. of Tech. & Science</p>
               </div>
@@ -420,7 +423,7 @@ export default function StudentSearch() {
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                   <QrCode size={12} /> Scan QR with mobile for fast navigation on campus exam day.
                 </p>
-                <button onClick={handlePrint} className="btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', width: '100%' }}>
+                <button onClick={handlePrint} className="btn-secondary no-print" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', width: '100%' }}>
                   <Download size={16} /> Print Seating Slip
                 </button>
               </div>

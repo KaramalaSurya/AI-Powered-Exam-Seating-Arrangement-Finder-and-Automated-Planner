@@ -574,3 +574,152 @@ header {
   }
 }
 
+/* Print styles for Seating Slip */
+/* Print styles for Seating Slip and Classroom Layout */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    background-image: none !important;
+  }
+
+  /* Hide non-printable elements */
+  header,
+  footer,
+  .search-row,
+  .no-print,
+  button,
+  .classroom-map-container,
+  .classroom-grid,
+  .podium-screen,
+  .glass-panel:not(.print-slip) {
+    display: none !important;
+  }
+
+  /* Reset layout constraints for printing */
+  .container {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+
+  main {
+    min-height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .grid-2 {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Style the print slip beautifully for black and white paper print */
+  .print-slip {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 2px solid #000000 !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    padding: 2.5rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid;
+  }
+
+  /* Accent colors in print */
+  .print-slip .text-gradient {
+    background: none !important;
+    -webkit-text-fill-color: initial !important;
+    color: #000000 !important;
+    font-weight: 800 !important;
+  }
+
+  /* Make text black and clear */
+  .print-slip p,
+  .print-slip span,
+  .print-slip div {
+    color: #000000 !important;
+  }
+
+  /* Styling badges for printing (solid thin border, light background) */
+  .print-slip .badge {
+    background: #f3f4f6 !important;
+    color: #000000 !important;
+    border: 1px solid #000000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-slip .badge-info {
+    background: #eff6ff !important;
+    color: #1e3a8a !important;
+    border: 1px solid #1e3a8a !important;
+  }
+
+  .print-slip .badge-success {
+    background: #ecfdf5 !important;
+    color: #064e3b !important;
+    border: 1px solid #064e3b !important;
+  }
+
+  /* Keep grid details clean and well bordered */
+  .print-slip .slip-info-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1rem !important;
+  }
+
+  .print-slip .slip-info-grid > div {
+    border: 1px solid #000000 !important;
+    background: #f9fafb !important;
+    padding: 0.5rem !important;
+    border-radius: 6px !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Adjust spacing in the coordinates box */
+  .print-slip div[style*="justify-content: space-around"] {
+    border: 1px solid #000000 !important;
+    background: #f9fafb !important;
+    margin-top: 1rem !important;
+    margin-bottom: 1rem !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-slip div[style*="justify-content: space-around"] p {
+    color: #000000 !important;
+    font-weight: 800 !important;
+  }
+
+  .print-slip div[style*="width: 1px"] {
+    background: #000000 !important;
+  }
+
+  /* QR code and footer adjustments */
+  .print-slip .slip-footer {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-top: 1.5rem !important;
+  }
+
+  .print-slip .slip-footer img {
+    border: 1px solid #000000 !important;
+    width: 90px !important;
+    height: 90px !important;
+  }
+
+  /* Hide print buttons */
+  .print-slip button {
+    display: none !important;
+  }
+}
+
