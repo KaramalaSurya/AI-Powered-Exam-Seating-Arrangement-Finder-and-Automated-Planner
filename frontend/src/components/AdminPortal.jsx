@@ -128,6 +128,14 @@ export default function AdminPortal({ token, onLogout }) {
   const [approvedSlot, setApprovedSlot] = useState(false);
   const [seedingInventory, setSeedingInventory] = useState(false);
   
+  // Custom slot creator states
+  const [showCustomSlotForm, setShowCustomSlotForm] = useState(false);
+  const [customSlotDate, setCustomSlotDate] = useState('');
+  const [customSlotTime, setCustomSlotTime] = useState('10:00 AM - 01:00 PM');
+  const [registrationSubjects, setRegistrationSubjects] = useState([]);
+  const [selectedCustomSubjects, setSelectedCustomSubjects] = useState([]);
+  const [schedulingCustomSlot, setSchedulingCustomSlot] = useState(false);
+  
   const selectedSessionName = sessions.find(s => s.id === activeSessionId)?.name || 'None';
   const [targetBlock, setTargetBlock] = useState('All');
   const [classroomText, setClassroomText] = useState(`East Block (EB)
@@ -159,8 +167,77 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
       fetchDbRanges(activeSessionId);
       fetchPlannerStatus(activeSessionId);
       fetchSlots(activeSessionId);
+      fetchRegistrationSubjects(activeSessionId);
     }
   }, [activeSessionId]);
+
+  const fetchRegistrationSubjects = async (sessId) => {
+    if (!sessId) return;
+    try {
+      const res = await fetch(`http://localhost:8085/api/admin/registration-subjects?session_id=${sessId}`);
+      const data = await res.json();
+      setRegistrationSubjects(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleScheduleCustomSlot = async () => {
+    if (!customSlotDate) {
+      alert("Please select an exam date.");
+      return;
+    }
+    if (!customSlotTime) {
+      alert("Please enter/select an exam time.");
+      return;
+    }
+    if (selectedCustomSubjects.length === 0) {
+      alert("Please select at least one subject to schedule.");
+      return;
+    }
+    
+    setSchedulingCustomSlot(true);
+    try {
+      const res = await fetch('http://localhost:8085/api/admin/allocation/add-slot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: activeSessionId,
+          exam_date: customSlotDate,
+          exam_time: customSlotTime,
+          subjects: selectedCustomSubjects
+        })
+      });
+      if (res.ok) {
+        alert('Custom exam slot scheduled successfully!');
+        const savedDate = customSlotDate;
+        const savedTime = customSlotTime;
+        // Reset custom slot states
+        setCustomSlotDate('');
+        setSelectedCustomSubjects([]);
+        setShowCustomSlotForm(false);
+        // Refresh slots and status
+        await fetchPlannerStatus(activeSessionId);
+        const refreshRes = await fetch(`http://localhost:8085/api/admin/allocation/slots?session_id=${activeSessionId}`);
+        const freshSlots = await refreshRes.json();
+        setSlots(freshSlots);
+        const newSlot = freshSlots.find(s => s.exam_date === savedDate && s.exam_time === savedTime);
+        if (newSlot) {
+          setSelectedSlot(newSlot);
+          setAllocationPreview(null);
+          setApprovedSlot(false);
+        }
+      } else {
+        const err = await res.json();
+        alert(err.detail || 'Failed to schedule custom slot.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error scheduling custom slot: ' + e.message);
+    } finally {
+      setSchedulingCustomSlot(false);
+    }
+  };
 
   const fetchPlannerStatus = async (sessId) => {
     if (!sessId) return;
@@ -1349,13 +1426,99 @@ Floor: Room1, Room2, ..."
 
               {/* Section 2: Seating Planner Runner */}
               <div className="glass-panel" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>
-                  3. "12-12" Mixed Seating Planner: <span style={{ color: 'var(--primary)' }}>{selectedSessionName}</span>
-                </h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>
+                    3. "12-12" Mixed Seating Planner: <span style={{ color: 'var(--primary)' }}>{selectedSessionName}</span>
+                  </h3>
+                  <button 
+                    onClick={() => setShowCustomSlotForm(!showCustomSlotForm)} 
+                    className="btn-secondary" 
+                    style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                  >
+                    <Plus size={14} />
+                    {showCustomSlotForm ? 'Cancel Custom Slot' : 'Add Custom Exam Slot'}
+                  </button>
+                </div>
+
+                {showCustomSlotForm && (
+                  <div className="glass-panel animate-fade-in" style={{ padding: '1.5rem', border: '1px dashed var(--primary)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '1.25rem', background: 'rgba(59, 130, 246, 0.02)' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--primary)', margin: 0 }}>Schedule a New Custom Exam Slot</h4>
+                    
+                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: '200px' }}>
+                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                          Exam Date
+                        </label>
+                        <input 
+                          type="date" 
+                          value={customSlotDate}
+                          onChange={(e) => setCustomSlotDate(e.target.value)}
+                          className="input-field"
+                          style={{ width: '100%', padding: '0.5rem', colorScheme: 'dark' }}
+                        />
+                      </div>
+                      
+                      <div style={{ flex: 1, minWidth: '200px' }}>
+                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                          Exam Time
+                        </label>
+                        <select
+                          value={customSlotTime}
+                          onChange={(e) => setCustomSlotTime(e.target.value)}
+                          className="input-field"
+                          style={{ width: '100%', padding: '0.5rem' }}
+                        >
+                          <option value="10:00 AM - 01:00 PM">10:00 AM - 01:00 PM (Morning)</option>
+                          <option value="02:00 PM - 05:00 PM">02:00 PM - 05:00 PM (Afternoon)</option>
+                          <option value="09:30 AM - 12:30 PM">09:30 AM - 12:30 PM</option>
+                          <option value="01:30 PM - 04:30 PM">01:30 PM - 04:30 PM</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
+                        Select Subjects to Schedule (Choose 2 or more to mix seating)
+                      </label>
+                      {registrationSubjects.length === 0 ? (
+                        <p style={{ fontSize: '0.8rem', color: 'var(--warning)', margin: 0 }}>No subjects found in student registrations. Please upload student registration lists first.</p>
+                      ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.5rem', maxHeight: '180px', overflowY: 'auto', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '6px', background: 'rgba(0,0,0,0.1)' }}>
+                          {registrationSubjects.map((subj) => (
+                            <label key={subj} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--text-main)', cursor: 'pointer' }}>
+                              <input 
+                                type="checkbox"
+                                checked={selectedCustomSubjects.includes(subj)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedCustomSubjects([...selectedCustomSubjects, subj]);
+                                  } else {
+                                    setSelectedCustomSubjects(selectedCustomSubjects.filter(s => s !== subj));
+                                  }
+                                }}
+                              />
+                              {subj}
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <button 
+                      onClick={handleScheduleCustomSlot}
+                      disabled={schedulingCustomSlot || registrationSubjects.length === 0}
+                      className="btn-primary"
+                      style={{ padding: '0.55rem 1.5rem', alignSelf: 'flex-end', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                    >
+                      {schedulingCustomSlot ? <RefreshCw className="spinner" size={16} /> : <CheckCircle size={16} />}
+                      Schedule & Select Slot
+                    </button>
+                  </div>
+                )}
                 
                 {slots.length === 0 ? (
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                    No exam slots found. Please upload a Master Exam Schedule above to display available planning slots.
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
+                    No exam slots found. Please upload a Master Exam Schedule above or click "Add Custom Exam Slot" to schedule a slot manually.
                   </p>
                 ) : (
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>

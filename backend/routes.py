@@ -63,6 +63,13 @@ class IngestionSaveRequest(BaseModel):
     ranges: List[SeatingRangeSave]
 
 
+class AddCustomSlotRequest(BaseModel):
+    session_id: int
+    exam_date: str
+    exam_time: str
+    subjects: List[str]
+
+
 import os
 
 # --- Helper to get API Key from DB ---
@@ -619,6 +626,47 @@ def get_allocation_slots(session_id: int):
     slots = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return slots
+
+
+@router.get("/admin/registration-subjects")
+def get_registration_subjects(session_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT DISTINCT subject 
+        FROM student_registrations 
+        WHERE session_id = ?
+        ORDER BY subject ASC
+    """, (session_id,))
+    subjects = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return subjects
+
+
+@router.post("/admin/allocation/add-slot")
+def add_custom_slot(req: AddCustomSlotRequest):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Check if session exists
+        cursor.execute("SELECT id FROM sessions WHERE id = ?", (req.session_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Session not found.")
+        
+        # Insert custom slot for each subject
+        for subject in req.subjects:
+            cursor.execute("""
+                INSERT OR IGNORE INTO exam_schedules (session_id, exam_date, exam_time, subject)
+                VALUES (?, ?, ?, ?)
+            """, (req.session_id, req.exam_date, req.exam_time, subject))
+            
+        conn.commit()
+        return {"success": True, "message": "Custom slot added successfully."}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
 
 @router.post("/admin/allocation/run")
 def run_allocation_endpoint(data: RunAllocationRequest):
