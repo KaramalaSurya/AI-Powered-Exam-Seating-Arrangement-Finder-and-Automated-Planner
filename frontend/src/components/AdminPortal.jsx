@@ -376,9 +376,11 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
       }
       
       const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
+      const downloadBlob = new Blob([blob], { type: 'application/octet-stream' });
+      const downloadUrl = window.URL.createObjectURL(downloadBlob);
       const link = document.createElement('a');
       link.href = downloadUrl;
+      link.style.display = 'none';
       
       const blockSuffix = selectedBlockPreview !== 'All' ? `_${selectedBlockPreview.replace(/\s+/g, '_')}` : '';
       const filename = `${reportName}_${selectedSlot.exam_date.replace(/-/g, '_')}${blockSuffix}.pdf`;
@@ -386,8 +388,12 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
       link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
+      
+      // Delay cleanups to let Chrome register and start the file download
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+      }, 150);
     } catch (err) {
       alert("Error generating PDF: " + err.message);
     }

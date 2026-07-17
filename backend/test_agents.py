@@ -172,5 +172,75 @@ class TestSeatingLogic(unittest.TestCase):
         self.assertEqual(res["column"], 1)
         self.assertEqual(res["side"], "Left")
 
+    def test_bench_numbering(self):
+        """Test serpentine right-to-left column-wise bench numbering starts with 001 for each room."""
+        room_meta = {
+            "rows": 6,
+            "columns": 4,
+            "filling_strategy": "column_wise",
+            "students_per_bench": 2
+        }
+        ranges = [
+            {
+                "roll_prefix": "23711A05",
+                "start_num": 1,
+                "end_num": 48,
+                "block": "CSE Block",
+                "room_name": "401",
+                "exam_date": "2026-07-06",
+                "exam_time": "10:00 AM",
+                "subject": "CN",
+                "order_index": 0
+            }
+        ]
+        
+        # Test student at Row 0, Column 3 (rightmost column, top row)
+        # col_from_right = 0 (even), goes top-down
+        # Row 0, Col 3 -> Bench 001
+        res = SeatMappingAgent.map_student_to_seat("23711A0537", ranges, room_meta)
+        self.assertEqual(res["row"], 0)
+        self.assertEqual(res["column"], 3)
+        self.assertEqual(res["bench_number"], "001")
+        
+        # Test student at Row 5, Column 3 (rightmost column, bottom row)
+        # col_from_right = 0 (even), goes top-down
+        # Row 5, Col 3 -> Bench 006
+        res = SeatMappingAgent.map_student_to_seat("23711A0547", ranges, room_meta)
+        self.assertEqual(res["row"], 5)
+        self.assertEqual(res["column"], 3)
+        self.assertEqual(res["bench_number"], "006")
+        
+        # Test student at Row 0, Column 2 (second column from right, top row)
+        # col_from_right = 1 (odd), goes bottom-up
+        # Row 0, Col 2 -> Bench 012
+        res = SeatMappingAgent.map_student_to_seat("23711A0525", ranges, room_meta)
+        self.assertEqual(res["row"], 0)
+        self.assertEqual(res["column"], 2)
+        self.assertEqual(res["bench_number"], "012")
+
+        # Test student at Row 5, Column 2 (second column from right, bottom row)
+        # col_from_right = 1 (odd), goes bottom-up
+        # Row 5, Col 2 -> Bench 007
+        res = SeatMappingAgent.map_student_to_seat("23711A0535", ranges, room_meta)
+        self.assertEqual(res["row"], 5)
+        self.assertEqual(res["column"], 2)
+        self.assertEqual(res["bench_number"], "007")
+
+        # Test student at Row 5, Column 0 (leftmost column, bottom row)
+        # col_from_right = 3 (odd), goes bottom-up
+        # Row 5, Col 0 -> Bench 019
+        res = SeatMappingAgent.map_student_to_seat("23711A0511", ranges, room_meta)
+        self.assertEqual(res["row"], 5)
+        self.assertEqual(res["column"], 0)
+        self.assertEqual(res["bench_number"], "019")
+
+        # Test student at Row 0, Column 0 (leftmost column, top row)
+        # col_from_right = 3 (odd), goes bottom-up
+        # Row 0, Col 0 -> Bench 024
+        res = SeatMappingAgent.map_student_to_seat("23711A0501", ranges, room_meta)
+        self.assertEqual(res["row"], 0)
+        self.assertEqual(res["column"], 0)
+        self.assertEqual(res["bench_number"], "024")
+
 if __name__ == "__main__":
     unittest.main()

@@ -19,7 +19,7 @@ def get_slot_seating_data(session_id: int, exam_date: str, exam_time: str, conn:
     
     # 1. Get rooms in this session that have seating ranges for this slot
     query = """
-        SELECT DISTINCT r.id, r.block, r.room_name, r.rows, r.columns, r.capacity, r.filling_strategy
+        SELECT DISTINCT r.id, r.block, r.room_name, r.rows, r.columns, r.capacity, r.filling_strategy, r.students_per_bench
         FROM rooms r
         JOIN seating_ranges sr ON r.id = sr.room_id
         WHERE r.session_id = ? AND sr.exam_date = ? AND sr.exam_time = ?
@@ -72,6 +72,7 @@ def get_slot_seating_data(session_id: int, exam_date: str, exam_time: str, conn:
             "rows": room["rows"],
             "columns": room["columns"],
             "capacity": room["capacity"],
+            "students_per_bench": room["students_per_bench"],
             "seats": seats
         })
         
@@ -126,7 +127,9 @@ def generate_door_charts_pdf(session_name: str, exam_date: str, exam_time: str, 
         p.drawCentredString(width / 2.0, height - 193, "FRONT / BLACKBOARD / PROCTOR TABLE")
         
         # Seating Grid layout coordinates
-        # 6 rows, 4 columns
+        room_rows = room.get("rows", 6)
+        room_cols = room.get("columns", 4)
+        
         # Cell sizing
         cell_width = 115
         cell_height = 65
@@ -137,19 +140,25 @@ def generate_door_charts_pdf(session_name: str, exam_date: str, exam_time: str, 
         gap_y = 15
         
         # Grid seats A-B checkerboard filling
-        for col_idx in range(4):
-            for row_idx in range(6):
+        for col_idx in range(room_cols):
+            for row_idx in range(room_rows):
                 # Calculate coordinates
                 # X coordinate: col_idx * (cell_width + gap_x) + grid_start_x
                 # Y coordinate: grid_start_y - (row_idx * (cell_height + gap_y)) - cell_height
                 x = col_idx * (cell_width + gap_x) + grid_start_x
                 y = grid_start_y - (row_idx * (cell_height + gap_y)) - cell_height
                 
-                is_two_per_bench = room["capacity"] == 48
+                col_from_right = room_cols - 1 - col_idx
+                if col_from_right % 2 == 0:
+                    bench_order = col_from_right * room_rows + row_idx + 1
+                else:
+                    bench_order = col_from_right * room_rows + (room_rows - 1 - row_idx) + 1
+                bench_num = f"{bench_order:03d}"
+                is_two_per_bench = room.get("students_per_bench", 1) == 2
                 
                 if is_two_per_bench:
                     # Draw two seats per bench side-by-side
-                    left_idx = col_idx * 12 + row_idx * 2
+                    left_idx = col_idx * (room_rows * 2) + row_idx * 2
                     right_idx = left_idx + 1
                     
                     half_width = cell_width / 2.0 - 2
@@ -185,7 +194,7 @@ def generate_door_charts_pdf(session_name: str, exam_date: str, exam_time: str, 
                             # Seat label
                             p.setFillColor(colors.HexColor("#94a3b8"))
                             p.setFont("Helvetica", 5.5)
-                            p.drawString(sx + 3, y + 4, f"S{s_idx + 1}")
+                            p.drawString(sx + 3, y + 4, f"B{bench_num} | S{s_idx + 1}")
                         else:
                             # Vacant half-bench
                             p.setStrokeColor(colors.HexColor("#cbd5e1"))
@@ -198,10 +207,10 @@ def generate_door_charts_pdf(session_name: str, exam_date: str, exam_time: str, 
                             p.setFont("Helvetica-Oblique", 7.5)
                             p.drawCentredString(sx + half_width/2.0, y + cell_height/2.0 - 2, "VACANT")
                             p.setFont("Helvetica", 5.5)
-                            p.drawString(sx + 3, y + 4, f"S{s_idx + 1}")
+                            p.drawString(sx + 3, y + 4, f"B{bench_num} | S{s_idx + 1}")
                 else:
                     # Draw single seat per bench (original logic)
-                    seat_idx = col_idx * 6 + row_idx
+                    seat_idx = col_idx * room_rows + row_idx
                     seat = room["seats"][seat_idx] if seat_idx < len(room["seats"]) else None
                     
                     if seat:
@@ -233,7 +242,7 @@ def generate_door_charts_pdf(session_name: str, exam_date: str, exam_time: str, 
                         # Seat number label
                         p.setFillColor(colors.HexColor("#94a3b8"))
                         p.setFont("Helvetica", 6.5)
-                        p.drawString(x + 5, y + 5, f"Seat {seat_idx + 1}")
+                        p.drawString(x + 5, y + 5, f"B{bench_num} | Seat {seat_idx + 1}")
                     else:
                         # Draw empty bench
                         p.setStrokeColor(colors.HexColor("#cbd5e1"))
@@ -246,7 +255,7 @@ def generate_door_charts_pdf(session_name: str, exam_date: str, exam_time: str, 
                         p.setFont("Helvetica-Oblique", 9)
                         p.drawCentredString(x + cell_width/2.0, y + cell_height/2.0 - 2, "VACANT")
                         p.setFont("Helvetica", 6.5)
-                        p.drawString(x + 5, y + 5, f"Seat {seat_idx + 1}")
+                        p.drawString(x + 5, y + 5, f"B{bench_num} | Seat {seat_idx + 1}")
                     
         # Entrance Label at the bottom
         p.setFillColor(colors.HexColor("#f1f5f9"))

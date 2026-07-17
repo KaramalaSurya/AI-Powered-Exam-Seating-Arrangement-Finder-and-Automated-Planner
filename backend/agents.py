@@ -778,6 +778,13 @@ class SeatMappingAgent:
             
         side = "Left" if side_idx == 0 else "Right"
         
+        col_from_right = cols - 1 - col_idx
+        if col_from_right % 2 == 0:
+            bench_order = col_from_right * rows + row_idx + 1
+        else:
+            bench_order = col_from_right * rows + (rows - 1 - row_idx) + 1
+        bench_number = f"{bench_order:03d}"
+
         room_grid = SeatMappingAgent.generate_room_grid(
             rows=rows, 
             cols=cols, 
@@ -796,6 +803,7 @@ class SeatMappingAgent:
             "column": col_idx,    # 0-indexed
             "side": side,            # 'Left' or 'Right'
             "seat_number": student_offset_in_room + 1,
+            "bench_number": bench_number,
             "room_grid": room_grid,
             "students_per_bench": students_per_bench
         }
@@ -847,6 +855,13 @@ class SeatMappingAgent:
             for c_idx in range(cols):
                 filling_strategy = sorted_ranges[0].get("filling_strategy", "column_wise") if sorted_ranges else "column_wise"
                 
+                col_from_right = cols - 1 - c_idx
+                if col_from_right % 2 == 0:
+                    bench_order = col_from_right * rows + r_idx + 1
+                else:
+                    bench_order = col_from_right * rows + (rows - 1 - r_idx) + 1
+                bench_number = f"{bench_order:03d}"
+                
                 if students_per_bench == 2:
                     if filling_strategy == "row_wise":
                         left_idx = r_idx * (cols * 2) + c_idx * 2
@@ -860,6 +875,7 @@ class SeatMappingAgent:
                     
                     row_cells.append({
                         "column_index": c_idx,
+                        "bench_number": bench_number,
                         "left": left_seat,
                         "right": right_seat
                     })
@@ -873,6 +889,7 @@ class SeatMappingAgent:
                     
                     row_cells.append({
                         "column_index": c_idx,
+                        "bench_number": bench_number,
                         "left": seat,
                         "right": None
                     })

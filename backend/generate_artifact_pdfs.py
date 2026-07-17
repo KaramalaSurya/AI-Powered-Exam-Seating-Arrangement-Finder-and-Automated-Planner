@@ -48,7 +48,7 @@ def generate_pdfs():
             return
             
         # Target directory in artifacts
-        artifact_dir = "C:\\Users\\surya\\.gemini\\antigravity-ide\\brain\\9d0d3343-9990-4481-91bb-4f4fc404493c"
+        artifact_dir = "C:\\Users\\surya\\.gemini\\antigravity-ide\\brain\\c57acd55-46fa-4893-b6a9-4025f4cd71b3"
         os.makedirs(artifact_dir, exist_ok=True)
         
         # 3. Generate Door Seating Charts

@@ -411,6 +411,11 @@ export default function StudentSearch() {
                   {result.seating_details.students_per_bench === 1 ? 'Single Seat' : result.seating_details.side}
                 </p>
               </div>
+              <div style={{ width: '1px', height: '30px', background: 'var(--border-color)' }} />
+              <div style={{ textAlign: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Bench No</span>
+                <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--secondary)' }}>{result.seating_details.bench_number}</p>
+              </div>
             </div>
 
             {/* QR Code and Actions */}
@@ -475,6 +480,8 @@ export default function StudentSearch() {
                       className="bench-cell"
                       style={result.seating_details.students_per_bench === 1 ? { gridTemplateColumns: '1fr' } : {}}
                     >
+                      {/* Bench number badge */}
+                      <span className="bench-number-badge">{cell.bench_number}</span>
                       {/* Left seat of the bench */}
                       {cell.left && (() => {
                         const isHighlighted = cell.left.highlighted;
