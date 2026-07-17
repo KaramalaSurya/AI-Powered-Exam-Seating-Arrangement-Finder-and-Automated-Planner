@@ -482,14 +482,39 @@ def seed_rooms_endpoint(data: SeedRoomsRequest):
         rooms_to_seed = []
         current_block = "General Block"
         
+        floor_indicators = ["floor", "ground", "first", "second", "third", "fourth", "fifth", "sixth", 
+                            "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth", "thirteenth", 
+                            "fourteenth", "fifteenth", "sixteenth"]
+        
         lines = data.text_content.strip().split('\n')
         for line in lines:
             line = line.strip()
             if not line:
                 continue
-            if ":" in line:
-                floor_part, rooms_part = line.split(":", 1)
-                room_tokens = rooms_part.split(",")
+                
+            # Clean bullet indicators like "- ", "* ", "1. " from start of line
+            line_clean = re.sub(r'^[-\*\+\d\.\s]+', '', line).strip()
+            if not line_clean:
+                continue
+                
+            lower_line = line_clean.lower()
+            is_floor_line = any(ind in lower_line for ind in floor_indicators)
+            
+            # Check if line contains rooms (comma or semicolon separated, or contains a separator with details)
+            has_rooms = "," in line_clean or ";" in line_clean
+            
+            # Check for typical separator
+            has_separator = ":" in line_clean or ("-" in line_clean and has_rooms)
+            
+            if has_separator:
+                sep = ":" if ":" in line_clean else "-"
+                parts = line_clean.split(sep, 1)
+                # Skip if the right hand side says "no classrooms" or similar
+                rhs = parts[1].strip().lower()
+                if any(no_cls in rhs for no_cls in ["no classroom", "no room", "none listed", "none"]):
+                    continue
+                    
+                room_tokens = re.split(r'[,;]', parts[1])
                 for token in room_tokens:
                     token = token.strip()
                     if not token:
@@ -497,10 +522,26 @@ def seed_rooms_endpoint(data: SeedRoomsRequest):
                     room_name = re.sub(r'\(.*?\)', '', token).strip()
                     if room_name:
                         rooms_to_seed.append((current_block, room_name))
+                        
+            elif has_rooms:
+                # Continuation line containing comma or semicolon separated rooms
+                room_tokens = re.split(r'[,;]', line_clean)
+                for token in room_tokens:
+                    token = token.strip()
+                    if not token:
+                        continue
+                    room_name = re.sub(r'\(.*?\)', '', token).strip()
+                    if room_name:
+                        rooms_to_seed.append((current_block, room_name))
+                        
+            elif is_floor_line:
+                # Empty floor lines or floor lines without rooms (e.g. "Ground Floor - No classrooms listed")
+                continue
             else:
-                block_name = re.sub(r'\(.*?\)', '', line).strip()
+                # Block name line
+                block_name = re.sub(r'\(.*?\)', '', line_clean).strip()
                 if block_name:
-                    current_block = line.strip()
+                    current_block = line_clean.strip()
                     
         if not rooms_to_seed:
             raise HTTPException(status_code=400, detail="No classrooms parsed from the text content. Please check format.")
