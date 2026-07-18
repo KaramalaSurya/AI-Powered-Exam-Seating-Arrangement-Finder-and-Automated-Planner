@@ -847,7 +847,7 @@ def get_active_slots_for_students():
         cursor.execute(f"""
             SELECT DISTINCT session_id, exam_date, exam_time, subject
             FROM seating_ranges
-            WHERE session_id IN ({placeholders})
+            WHERE session_id IN ({placeholders}) AND subject != 'Empty'
         """, session_ids)
         ranges_slots = [dict(row) for row in cursor.fetchall()]
         
