@@ -118,14 +118,9 @@ export default function StudentSearch() {
         <div className="glass-panel card-glow" style={{ padding: '2.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--primary-gradient)' }} />
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
-            <div style={{ background: 'rgba(30, 58, 138, 0.1)', padding: '0.4rem', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Sparkles size={20} style={{ color: 'var(--primary)' }} />
-            </div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, letterSpacing: '-0.02em' }}>
-              Find Your Seating
-            </h2>
-          </div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)', margin: '0 0 0.5rem 0', letterSpacing: '-0.02em' }}>
+            Find Your Seating
+          </h2>
           
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.75rem', lineHeight: 1.5 }}>
             Enter your college roll number to instantly retrieve your exam block, room number, and seat coordinates.

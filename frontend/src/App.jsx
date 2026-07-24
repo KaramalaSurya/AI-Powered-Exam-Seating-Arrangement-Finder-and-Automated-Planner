@@ -4,7 +4,6 @@ import AdminPortal from './components/AdminPortal';
 import AdminLogin from './components/AdminLogin';
 import { API_BASE_URL } from './config';
 import { 
-  GraduationCap, 
   Search, 
   ShieldCheck, 
   HelpCircle, 
@@ -89,9 +88,6 @@ export default function App() {
         {/* Top Navigation & Branding Header */}
         <header className="animate-fade-in" style={{ marginTop: '0.5rem', marginBottom: '2.5rem' }}>
           <a href="/" className="logo" onClick={(e) => { e.preventDefault(); setView('student'); }} style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-            <div className="logo-icon">
-              <GraduationCap size={24} style={{ color: '#ffffff' }} />
-            </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.03em', lineHeight: 1 }}>
