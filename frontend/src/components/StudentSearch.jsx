@@ -295,6 +295,15 @@ export default function StudentSearch() {
           }}>
             {activeSlots.map((slot, index) => {
               const isPublished = slot.status === 'Published';
+              const palettes = [
+                { border: '#2563eb', deptColor: '#1d4ed8', badgeBg: '#eff6ff', badgeColor: '#1e40af', iconColor: '#2563eb', liveColor: '#1d4ed8' },
+                { border: '#7c3aed', deptColor: '#6d28d9', badgeBg: '#f5f3ff', badgeColor: '#5b21b6', iconColor: '#7c3aed', liveColor: '#6d28d9' },
+                { border: '#0d9488', deptColor: '#0f766e', badgeBg: '#f0fdf4', badgeColor: '#115e59', iconColor: '#0d9488', liveColor: '#0f766e' },
+                { border: '#d97706', deptColor: '#b45309', badgeBg: '#fffbeb', badgeColor: '#92400e', iconColor: '#d97706', liveColor: '#b45309' },
+                { border: '#4f46e5', deptColor: '#4338ca', badgeBg: '#eef2ff', badgeColor: '#3730a3', iconColor: '#4f46e5', liveColor: '#4338ca' }
+              ];
+              const palette = palettes[index % palettes.length];
+
               return (
                 <div 
                   key={index} 
@@ -302,7 +311,7 @@ export default function StudentSearch() {
                   style={{ 
                     padding: '1.5rem', 
                     position: 'relative',
-                    borderLeft: isPublished ? '4px solid var(--accent)' : '4px solid #94a3b8',
+                    borderLeft: isPublished ? `4px solid ${palette.border}` : '4px solid #94a3b8',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
@@ -312,11 +321,11 @@ export default function StudentSearch() {
                   <div>
                     {/* Header: Department + Status Badge */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                      <span style={{ fontSize: '0.72rem', color: palette.deptColor, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                         {slot.department}
                       </span>
                       {isPublished ? (
-                        <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>
+                        <span className="badge" style={{ fontSize: '0.7rem', background: palette.badgeBg, color: palette.badgeColor, border: `1px solid ${palette.border}33`, padding: '0.25rem 0.6rem', borderRadius: '12px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                           <CheckCircle2 size={12} /> Published
                         </span>
                       ) : (
@@ -333,7 +342,7 @@ export default function StudentSearch() {
                     
                     {/* Exam Location */}
                     <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <MapPin size={14} style={{ color: 'var(--primary)' }} /> {slot.exam_hall}
+                      <MapPin size={14} style={{ color: palette.iconColor }} /> {slot.exam_hall}
                     </p>
                   </div>
 
@@ -348,7 +357,7 @@ export default function StudentSearch() {
                       </div>
                       
                       {isPublished ? (
-                        <span style={{ fontSize: '0.72rem', color: 'var(--accent)', fontWeight: 700 }}>
+                        <span style={{ fontSize: '0.72rem', color: palette.liveColor, fontWeight: 800, letterSpacing: '0.04em' }}>
                           Live
                         </span>
                       ) : (
