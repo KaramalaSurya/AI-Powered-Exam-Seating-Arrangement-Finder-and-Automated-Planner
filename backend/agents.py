@@ -318,11 +318,22 @@ class LLMParsingAgent:
         exam_date = "2026-07-06"
         exam_time = "10:00 AM - 01:00 PM"
         
+        # Function to ensure YYYY-MM-DD format for HTML date inputs
+        def format_to_iso_date(raw_d: str) -> str:
+            parts = re.split(r'[\.\-/]', str(raw_d).strip())
+            if len(parts) == 3:
+                p1, p2, p3 = parts
+                if len(p3) == 4:
+                    return f"{p3}-{p2.zfill(2)}-{p1.zfill(2)}"
+                elif len(p1) == 4:
+                    return f"{p1}-{p2.zfill(2)}-{p3.zfill(2)}"
+            return "2026-07-06"
+
         # Look for general exam parameters
         for line in lines:
             dt_match = re.search(r"Date(?:\s*of\s*Exam)?:\s*([\d\.\-]+)", line, re.IGNORECASE)
             if dt_match:
-                exam_date = dt_match.group(1).replace(".", "-")
+                exam_date = format_to_iso_date(dt_match.group(1))
             
             time_match = re.search(r"Time:\s*([\d\:]+\s*(?:AM|PM)\s*-\s*[\d\:]+\s*(?:AM|PM)|[\d\:]+\s*(?:AM|PM)\s*(?:TO|to)\s*[\d\:]+\s*(?:AM|PM))", line, re.IGNORECASE)
             if time_match:
@@ -331,7 +342,7 @@ class LLMParsingAgent:
             # Date & Time: 11.02.2026 AN, 01:30 PM TO 03:00 PM
             dt_full_match = re.search(r"Date\s*&\s*Time\s*:\s*([\d\.]+)\s*(?:\w+)?\s*,\s*([\d\:]+\s*\w+\s*(?:TO|to)\s*[\d\:]+\s*\w+)", line, re.IGNORECASE)
             if dt_full_match:
-                exam_date = dt_full_match.group(1).replace(".", "-")
+                exam_date = format_to_iso_date(dt_full_match.group(1))
                 exam_time = dt_full_match.group(2).strip()
                 
         # Group rolls by room & subject

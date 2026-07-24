@@ -193,14 +193,14 @@ def search_student_seating(
         
     room_id = match_range["room_id"]
     
-    # 3. Fetch all ranges for this room (sorted by order_index) for the same exam slot to calculate seating layout offsets
+    # 3. Fetch all ranges for this room (sorted by order_index) for the active session to calculate seating layout offsets
     cursor.execute("""
         SELECT sr.*, r.block, r.room_name
         FROM seating_ranges sr
         JOIN rooms r ON sr.room_id = r.id
-        WHERE sr.room_id = ? AND sr.exam_date = ? AND sr.exam_time = ?
+        WHERE sr.room_id = ? AND sr.session_id = ?
         ORDER BY sr.order_index ASC
-    """, (room_id, match_range["exam_date"], match_range["exam_time"]))
+    """, (room_id, match_range["session_id"]))
     
     ranges_in_room = [dict(r) for r in cursor.fetchall()]
     conn.close()
