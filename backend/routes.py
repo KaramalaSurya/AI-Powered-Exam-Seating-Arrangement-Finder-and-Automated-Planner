@@ -107,24 +107,26 @@ def is_roll_in_range(roll_num: str, prefix: str, start_str: str, end_str: str) -
     if not prefix or start_str == "Empty" or end_str == "Empty":
         return False
         
-    from backend.agents import expand_roll_range, fix_ocr_suffix
-    start_clean = fix_ocr_suffix(start_str)
-    end_clean = fix_ocr_suffix(end_str)
-    
-    expanded = expand_roll_range(prefix, start_clean, end_clean)
-    if expanded and roll_num in expanded:
-        return True
-        
     if not roll_num.startswith(prefix):
         return False
         
+    from backend.agents import fix_ocr_suffix
+    start_clean = fix_ocr_suffix(start_str)
+    end_clean = fix_ocr_suffix(end_str)
+    
     suffix = roll_num[len(prefix):]
     
     if start_clean.isdigit() and end_clean.isdigit() and suffix.isdigit():
         return int(start_clean) <= int(suffix) <= int(end_clean)
         
     if len(start_clean) == len(end_clean) == len(suffix):
-        return start_clean <= suffix <= end_clean
+        if start_clean <= suffix <= end_clean:
+            return True
+            
+    from backend.agents import expand_roll_range
+    expanded = expand_roll_range(prefix, start_clean, end_clean)
+    if expanded and roll_num in expanded:
+        return True
         
     return False
 
