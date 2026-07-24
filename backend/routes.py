@@ -238,6 +238,11 @@ def list_sessions():
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM sessions ORDER BY created_at DESC")
     sessions = [dict(s) for s in cursor.fetchall()]
+    if not sessions:
+        cursor.execute("INSERT INTO sessions (name, is_active) VALUES ('Semester Exams 2026', 1)")
+        conn.commit()
+        cursor.execute("SELECT * FROM sessions ORDER BY created_at DESC")
+        sessions = [dict(s) for s in cursor.fetchall()]
     conn.close()
     return sessions
 

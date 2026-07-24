@@ -280,17 +280,20 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
     return subject.substring(0, 8);
   };
 
+  const resolveTargetSessionId = () => {
+    if (activeSessionId) return activeSessionId;
+    if (sessions && sessions.length > 0) return sessions[0].id;
+    return 1;
+  };
+
   const handleStudentsUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (!activeSessionId) {
-      alert("Please select or create an active examination session first.");
-      return;
-    }
+    const targetSessId = resolveTargetSessionId();
     setIngestingStudents(true);
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('session_id', activeSessionId);
+    formData.append('session_id', targetSessId);
     try {
       const res = await fetch('/api/admin/ingest-students', {
         method: 'POST',
@@ -299,8 +302,10 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
       const data = await res.json();
       if (res.ok) {
         alert(`Successfully ingested ${data.count} student registration records.`);
-        fetchPlannerStatus(activeSessionId);
-        fetchRegistrationSubjects(activeSessionId);
+        fetchSessions();
+        fetchPlannerStatus(targetSessId);
+        fetchRegistrationSubjects(targetSessId);
+        fetchStats();
       } else {
         alert(data.detail || 'Failed to ingest students list.');
       }
@@ -314,14 +319,11 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
   const handleScheduleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (!activeSessionId) {
-      alert("Please select or create an active examination session first.");
-      return;
-    }
+    const targetSessId = resolveTargetSessionId();
     setIngestingSchedule(true);
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('session_id', activeSessionId);
+    formData.append('session_id', targetSessId);
     try {
       const res = await fetch('/api/admin/ingest-schedule', {
         method: 'POST',
@@ -330,8 +332,10 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
       const data = await res.json();
       if (res.ok) {
         alert(`Successfully ingested ${data.count} exam schedule entries.`);
-        fetchPlannerStatus(activeSessionId);
-        fetchSlots(activeSessionId);
+        fetchSessions();
+        fetchPlannerStatus(targetSessId);
+        fetchSlots(targetSessId);
+        fetchStats();
       } else {
         alert(data.detail || 'Failed to ingest exam schedule.');
       }
