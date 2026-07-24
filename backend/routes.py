@@ -907,7 +907,7 @@ def get_active_slots_for_students():
             
             import re
             def normalize_subject(subj: str) -> str:
-                cleaned = re.sub(r'\(.*?\)', '', subj)
+                cleaned = re.sub(r'\(.*?\)', '', str(subj))
                 cleaned = re.sub(r'[^a-zA-Z0-9\s]', ' ', cleaned)
                 return " ".join(cleaned.lower().split())
                 
@@ -918,20 +918,30 @@ def get_active_slots_for_students():
                 if norm_reg in norm_sched or norm_sched in norm_reg or norm_reg == "general":
                     regs_for_subject.append(r)
                     
-            students_count = len(regs_for_subject)
-            if students_count == 0:
-                cursor.execute("""
-                    SELECT roll_prefix, start_num, end_num 
-                    FROM seating_ranges 
-                    WHERE session_id = ? AND exam_date = ? AND exam_time = ? AND subject = ?
-                """, (sess_id, exam_date, exam_time, subject))
-                ranges_for_slot = cursor.fetchall()
-                if ranges_for_slot:
-                    from backend.agents import expand_roll_range
-                    calc_count = sum(len(expand_roll_range(rp, s_num, e_num)) for rp, s_num, e_num in ranges_for_slot)
-                    students_count = calc_count if calc_count > 0 else 65
-                else:
-                    students_count = 65
+            # Fetch all seating ranges committed for this session slot to calculate exact AI-ingested student count
+            cursor.execute("""
+                SELECT roll_prefix, start_num, end_num, subject
+                FROM seating_ranges 
+                WHERE session_id = ?
+            """, (sess_id,))
+            all_session_ranges = cursor.fetchall()
+            
+            matching_slot_ranges = []
+            for rp, s_num, e_num, r_subj in all_session_ranges:
+                norm_r_subj = normalize_subject(r_subj)
+                if norm_r_subj in norm_sched or norm_sched in norm_r_subj or norm_r_subj == "general":
+                    matching_slot_ranges.append((rp, s_num, e_num))
+            
+            from backend.agents import expand_roll_range
+            if matching_slot_ranges:
+                calc_count = sum(len(expand_roll_range(rp, s_num, e_num)) for rp, s_num, e_num in matching_slot_ranges)
+                students_count = calc_count if calc_count > 0 else (len(regs_for_subject) or 65)
+            elif len(regs_for_subject) > 0:
+                students_count = len(regs_for_subject)
+            elif all_session_ranges:
+                students_count = sum(len(expand_roll_range(rp, s_num, e_num)) for rp, s_num, e_num, _ in all_session_ranges)
+            else:
+                students_count = 65
                 
             # Check if ranges are committed in database
             cursor.execute("""
