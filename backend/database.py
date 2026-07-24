@@ -51,8 +51,9 @@ class UnifiedCursor:
             elif "INSERT OR REPLACE INTO" in sql_pg:
                 sql_pg = sql_pg.replace("INSERT OR REPLACE INTO", "INSERT INTO")
 
-            # Handle RETURNING id for lastrowid
-            if sql_pg.strip().upper().startswith("INSERT INTO") and "RETURNING" not in sql_pg.upper():
+            # Handle RETURNING id for lastrowid (Only for tables with an 'id' column)
+            is_id_table = any(t in sql_pg.lower() for t in ["into sessions", "into rooms", "into seating_ranges"])
+            if is_id_table and sql_pg.strip().upper().startswith("INSERT INTO") and "RETURNING" not in sql_pg.upper():
                 sql_pg_ret = sql_pg + " RETURNING id"
                 try:
                     self._cursor.execute(sql_pg_ret, params)
@@ -64,11 +65,6 @@ class UnifiedCursor:
                             self.lastrowid = res[0]
                     return self
                 except Exception:
-                    if self._parent_conn:
-                        try:
-                            self._parent_conn.rollback()
-                        except Exception:
-                            pass
                     self._cursor.execute(sql_pg, params)
                     return self
             
