@@ -904,26 +904,34 @@ def get_active_slots_for_students():
             return []
 
         def is_subject_match(subj1: str, subj2: str) -> bool:
-            s1 = str(subj1).upper()
-            s2 = str(subj2).upper()
-            if s1 in s2 or s2 in s1:
+            s1 = str(subj1).upper().strip()
+            s2 = str(subj2).upper().strip()
+            if not s1 or not s2 or s1 == 'EMPTY' or s2 == 'EMPTY':
+                return False
+            if s1 == s2:
                 return True
-            abbr_map = {
-                "CAI": ["ARTIFICIAL INTELLIGENCE", "CSE-AI", "CSE AI", "AI", "CS-503"],
-                "CSE": ["COMPUTER SCIENCE", "COMPUTER SCIENCE AND ENGINEERING", "CS-412", "CS-300"],
-                "ECE": ["ELECTRONICS AND COMMUNICATION"],
-                "EEE": ["ELECTRICAL AND ELECTRONICS"],
-                "MECH": ["MECHANICAL"],
-                "CIVIL": ["CIVIL"]
-            }
-            for abbr, keywords in abbr_map.items():
-                if abbr in s1 and any(kw in s2 for kw in keywords): return True
-                if abbr in s2 and any(kw in s1 for kw in keywords): return True
-            w1 = set(re.findall(r'\b[A-Z]{3,}\b', s1))
-            w2 = set(re.findall(r'\b[A-Z]{3,}\b', s2))
-            if w1 and w2 and len(w1.intersection(w2)) > 0:
-                return True
-            return False
+                
+            def get_branch_category(s: str) -> str:
+                if any(k in s for k in ["ARTIFICIAL INTELLIGENCE", "CAI", "CSE-AI", "CSE AI", "CS-503"]):
+                    return "CAI"
+                if any(k in s for k in ["COMPUTER SCIENCE", "CSE", "CS-412", "CS-300"]):
+                    return "CSE"
+                if any(k in s for k in ["ELECTRONICS AND COMMUNICATION", "ECE"]):
+                    return "ECE"
+                if any(k in s for k in ["ELECTRICAL AND ELECTRONICS", "EEE"]):
+                    return "EEE"
+                if any(k in s for k in ["MECHANICAL", "MECH"]):
+                    return "MECH"
+                if any(k in s for k in ["CIVIL"]):
+                    return "CIVIL"
+                return s
+
+            cat1 = get_branch_category(s1)
+            cat2 = get_branch_category(s2)
+            if cat1 in ["CAI", "CSE", "ECE", "EEE", "MECH", "CIVIL"] or cat2 in ["CAI", "CSE", "ECE", "EEE", "MECH", "CIVIL"]:
+                return cat1 == cat2
+                
+            return s1 in s2 or s2 in s1
 
         # Fetch seating ranges for active sessions
         cursor.execute(f"""
@@ -960,19 +968,24 @@ def get_active_slots_for_students():
                 students_count = calc_count
             elif len(regs_for_subject) > 0:
                 students_count = len(regs_for_subject)
-            elif all_session_ranges:
-                students_count = sum(len(expand_roll_range(rp, s_num, e_num)) for rp, s_num, e_num, _ in all_session_ranges)
             else:
-                students_count = 60 if ("CSE" in subject.upper() and "AI" not in subject.upper()) else (42 if ("AI" in subject.upper() or "CAI" in subject.upper()) else 50)
+                students_count = 60 if ("CSE" in subject.upper() and "AI" not in subject.upper() and "CAI" not in subject.upper()) else (42 if ("AI" in subject.upper() or "CAI" in subject.upper()) else 50)
                 
-            is_published = len(rooms_set) > 0 or len(all_session_ranges) > 0
+            is_published = len(rooms_set) > 0
             status = "Published" if is_published else "Processing"
             
-            # Extrapolate department abbreviation
+            # Extrapolate department abbreviation accurately
             dept_match = re.search(r'\(([^)]+)\)', subject)
-            dept_abbr = dept_match.group(1) if dept_match else "GEN"
+            if dept_match:
+                dept_abbr = dept_match.group(1)
+            elif any(k in subject.upper() for k in ["ARTIFICIAL INTELLIGENCE", "CAI", "CSE-AI", "CSE AI"]):
+                dept_abbr = "CAI"
+            elif any(k in subject.upper() for k in ["COMPUTER SCIENCE", "CSE"]):
+                dept_abbr = "CSE"
+            else:
+                dept_abbr = "GEN"
             
-            # Format department title e.g. "B.TECH - CSE" or "M.TECH - CSE-AI"
+            # Format department title e.g. "B.TECH - CSE" or "B.TECH - CAI"
             is_mtech = "m.tech" in subject.lower() or "mtech" in subject.lower()
             dept_title = f"{'M.TECH' if is_mtech else 'B.TECH'} - {dept_abbr}"
             
