@@ -87,6 +87,17 @@ class UnifiedCursor:
             self.lastrowid = self._cursor.lastrowid
             return self
 
+    def executemany(self, sql, seq_of_parameters):
+        if not seq_of_parameters:
+            return self
+        if self._is_postgres:
+            for params in seq_of_parameters:
+                self.execute(sql, params)
+            return self
+        else:
+            self._cursor.executemany(sql, seq_of_parameters)
+            return self
+
     def fetchone(self):
         row = self._cursor.fetchone()
         if row is None:
