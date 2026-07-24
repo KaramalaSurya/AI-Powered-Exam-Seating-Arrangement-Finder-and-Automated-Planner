@@ -368,13 +368,24 @@ class LLMParsingAgent:
                     "start": m.start()
                 })
                 
-            # Find all roll numbers on the line
+            # Find all roll numbers on the line (supports 8 to 14 char roll numbers e.g. 24691A31D36)
             rolls = []
-            for m in re.finditer(r"\b(\d{2}[A-Z\d]{5,6})([A-Z\d]{2})\b", line, re.IGNORECASE):
+            for m in re.finditer(r"\b(\d{2}[A-Z0-9]{5,12})\b", line, re.IGNORECASE):
+                full = m.group(1).upper()
+                if len(full) >= 4:
+                    if re.search(r'[A-Z]\d{2}$', full):
+                        pref = full[:-3]
+                        suff = full[-3:]
+                    else:
+                        pref = full[:-2]
+                        suff = full[-2:]
+                else:
+                    pref = full
+                    suff = full
                 rolls.append({
-                    "prefix": m.group(1).upper(),
-                    "suffix": m.group(2).upper(),
-                    "full": m.group(0).upper(),
+                    "prefix": pref,
+                    "suffix": suff,
+                    "full": full,
                     "start": m.start()
                 })
                 

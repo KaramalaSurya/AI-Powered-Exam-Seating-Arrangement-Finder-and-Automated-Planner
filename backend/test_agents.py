@@ -11,7 +11,7 @@ import unittest
 import sqlite3
 import shutil
 from backend.agents import SeatMappingAgent, ValidationAgent
-from backend.database import get_db_connection, init_db, DATABASE_FILE
+from backend.database import get_db_connection, init_db
 
 class TestSeatingLogic(unittest.TestCase):
     
