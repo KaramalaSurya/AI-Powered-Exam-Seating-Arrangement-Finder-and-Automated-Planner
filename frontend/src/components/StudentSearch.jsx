@@ -296,11 +296,10 @@ export default function StudentSearch() {
             {activeSlots.map((slot, index) => {
               const isPublished = slot.status === 'Published';
               const palettes = [
-                { border: '#2563eb', deptColor: '#1d4ed8', badgeBg: '#eff6ff', badgeColor: '#1e40af', iconColor: '#2563eb', liveColor: '#1d4ed8' },
-                { border: '#7c3aed', deptColor: '#6d28d9', badgeBg: '#f5f3ff', badgeColor: '#5b21b6', iconColor: '#7c3aed', liveColor: '#6d28d9' },
-                { border: '#0d9488', deptColor: '#0f766e', badgeBg: '#f0fdf4', badgeColor: '#115e59', iconColor: '#0d9488', liveColor: '#0f766e' },
-                { border: '#d97706', deptColor: '#b45309', badgeBg: '#fffbeb', badgeColor: '#92400e', iconColor: '#d97706', liveColor: '#b45309' },
-                { border: '#4f46e5', deptColor: '#4338ca', badgeBg: '#eef2ff', badgeColor: '#3730a3', iconColor: '#4f46e5', liveColor: '#4338ca' }
+                { border: '#10b981', deptColor: '#047857', badgeBg: '#ecfdf5', badgeColor: '#047857', iconColor: '#10b981', liveColor: '#059669' },
+                { border: '#059669', deptColor: '#065f46', badgeBg: '#d1fae5', badgeColor: '#065f46', iconColor: '#059669', liveColor: '#047857' },
+                { border: '#34d399', deptColor: '#047857', badgeBg: '#e6f4ea', badgeColor: '#047857', iconColor: '#10b981', liveColor: '#059669' },
+                { border: '#0d9488', deptColor: '#0f766e', badgeBg: '#ccfbf1', badgeColor: '#115e59', iconColor: '#0d9488', liveColor: '#0f766e' }
               ];
               const palette = palettes[index % palettes.length];
 
