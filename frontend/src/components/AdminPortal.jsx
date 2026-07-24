@@ -862,18 +862,35 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
         
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Active Exam Session:</span>
-          <select 
-            value={activeSessionId}
-            onChange={(e) => handleActivateSession(parseInt(e.target.value))}
-            className="input-field"
-            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', fontWeight: 700, borderColor: 'var(--primary)', color: 'var(--primary)', background: 'rgba(59,130,246,0.05)', borderRadius: '6px', cursor: 'pointer' }}
-          >
-            {sessions.map(s => (
-              <option key={s.id} value={s.id}>
-                {s.name} {s.is_active ? '(Active)' : ''}
-              </option>
-            ))}
-          </select>
+          {sessions.length > 0 ? (
+            <select 
+              value={activeSessionId}
+              onChange={(e) => handleActivateSession(parseInt(e.target.value))}
+              className="input-field"
+              style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', fontWeight: 700, borderColor: 'var(--primary)', color: 'var(--primary)', background: 'rgba(59,130,246,0.05)', borderRadius: '6px', cursor: 'pointer' }}
+            >
+              {sessions.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.name} {s.is_active ? '(Active)' : ''}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+              <input 
+                type="text" 
+                placeholder="Session Name (e.g. Mid Exams)" 
+                value={newSessionName}
+                onChange={(e) => setNewSessionName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateSession()}
+                className="input-field"
+                style={{ padding: '0.45rem 0.75rem', fontSize: '0.8rem', minWidth: '190px' }}
+              />
+              <button onClick={handleCreateSession} className="btn-primary" style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem' }}>
+                + Create
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -953,20 +970,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
       {tab === 'upload' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           
-          {/* Settings Notice if active session is missing */}
-          {!activeSessionId && (
-            <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid var(--error)', background: 'rgba(239, 68, 68, 0.05)' }}>
-              <p style={{ fontWeight: 700, color: '#fca5a5' }}>No Active Session Selected</p>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                Go to the **Sessions & Current Seating** tab to select or create an active examination session before uploading notices.
-              </p>
-              <p style={{ fontSize: '0.8rem', color: 'var(--warning)', marginTop: '0.5rem', fontWeight: 500 }}>
-                💡 <strong>API Connection Check:</strong> If the connection indicator in the top right shows "API OFFLINE", please run <code>python -m backend.main</code> in your backend project folder to start the database server.
-              </p>
-            </div>
-          )}
-
-          {activeSessionId && !apiResult && (
+          {!apiResult && (
             <div className="glass-panel" style={{ padding: '2.5rem' }}>
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>Upload Seating Arrangement for Selected Session:</span>
@@ -1299,20 +1303,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
       {tab === 'planner' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           
-          {!activeSessionId && (
-            <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid var(--error)', background: 'rgba(239, 68, 68, 0.05)' }}>
-              <p style={{ fontWeight: 700, color: '#fca5a5' }}>No Active Session Selected</p>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                Go to the **Sessions & Current Seating** tab to select or create an active examination session before planning seating arrangements.
-              </p>
-              <p style={{ fontSize: '0.8rem', color: 'var(--warning)', marginTop: '0.5rem', fontWeight: 500 }}>
-                💡 <strong>API Connection Check:</strong> If the connection indicator in the top right shows "API OFFLINE", please run <code>python -m backend.main</code> in your backend project folder to start the database server.
-              </p>
-            </div>
-          )}
-
-          {activeSessionId && (
-            <>
+          <>
               {/* Session Selector in Planner View */}
               <div className="glass-panel animate-fade-in" style={{ padding: '1rem 1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '1rem' }}>
                 <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>Target Examination Session for Planning:</span>
@@ -1909,7 +1900,6 @@ Floor: Room1, Room2, ..."
                 </div>
               )}
             </>
-          )}
 
         </div>
       )}
