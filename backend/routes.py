@@ -155,26 +155,8 @@ def search_student_seating(
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # 1. Fetch active sessions or filter by session_id
-    if session_id is not None:
-        session_ids = [session_id]
-    else:
-        cursor.execute("SELECT DISTINCT session_id FROM seating_ranges UNION SELECT DISTINCT session_id FROM student_registrations")
-        session_ids = [r["session_id"] for r in cursor.fetchall() if r["session_id"]]
-        if not session_ids:
-            cursor.execute("SELECT id FROM sessions WHERE is_active = 1")
-            session_ids = [r["id"] for r in cursor.fetchall()]
-            
-    if not session_ids:
-        conn.close()
-        raise HTTPException(status_code=404, detail="No active exam session found.")
-        
-    cursor.execute(f"SELECT id, name FROM sessions WHERE id IN ({','.join('?' for _ in session_ids)})", session_ids)
-    active_sessions = [dict(row) for row in cursor.fetchall()]
-    
-    # 2. Fetch all ranges for active sessions to filter in Python
-    placeholders = ",".join("?" for _ in session_ids)
-    query = f"""
+    # 1. Fetch all seating ranges committed in the system
+    query = """
         SELECT 
             sr.*, 
             COALESCE(r.block, 'Exam Hall') as block, 
@@ -186,9 +168,8 @@ def search_student_seating(
             COALESCE(r.filling_strategy, 'serpentine') as filling_strategy
         FROM seating_ranges sr
         LEFT JOIN rooms r ON sr.room_id = r.id
-        WHERE sr.session_id IN ({placeholders})
     """
-    cursor.execute(query, session_ids)
+    cursor.execute(query)
     all_ranges = [dict(row) for row in cursor.fetchall()]
     
     # Find matching range
@@ -202,22 +183,35 @@ def search_student_seating(
         conn.close()
         raise HTTPException(
             status_code=404, 
-            detail=f"Seating arrangement not found for roll number '{roll_number}' in current active sessions."
+            detail=f"Seating arrangement not found for roll number '{roll_number}'."
         )
         
-    room_id = match_range["room_id"]
+    room_id = match_range.get("room_id")
+    target_session_id = match_range.get("session_id")
     
-    # 3. Fetch all ranges for this room (sorted by order_index) for the active session to calculate seating layout offsets
-    cursor.execute("""
-        SELECT 
-            sr.*, 
-            COALESCE(r.block, 'Exam Hall') as block, 
-            COALESCE(r.room_name, 'Hall 1') as room_name
-        FROM seating_ranges sr
-        LEFT JOIN rooms r ON sr.room_id = r.id
-        WHERE sr.session_id = ?
-        ORDER BY sr.order_index ASC
-    """, (match_range["session_id"],))
+    # 2. Fetch all ranges for this room (sorted by order_index) to calculate seating layout offsets
+    if room_id:
+        cursor.execute("""
+            SELECT 
+                sr.*, 
+                COALESCE(r.block, 'Exam Hall') as block, 
+                COALESCE(r.room_name, 'Hall 1') as room_name
+            FROM seating_ranges sr
+            LEFT JOIN rooms r ON sr.room_id = r.id
+            WHERE sr.room_id = ?
+            ORDER BY sr.order_index ASC
+        """, (room_id,))
+    else:
+        cursor.execute("""
+            SELECT 
+                sr.*, 
+                COALESCE(r.block, 'Exam Hall') as block, 
+                COALESCE(r.room_name, 'Hall 1') as room_name
+            FROM seating_ranges sr
+            LEFT JOIN rooms r ON sr.room_id = r.id
+            WHERE sr.session_id = ?
+            ORDER BY sr.order_index ASC
+        """, (target_session_id,))
     
     ranges_in_room = [dict(r) for r in cursor.fetchall()]
     conn.close()
@@ -235,8 +229,7 @@ def search_student_seating(
     if "error" in seating_map:
         raise HTTPException(status_code=500, detail=seating_map["error"])
         
-    match_session_id = match_range["session_id"]
-    match_session_name = next((s["name"] for s in active_sessions if s["id"] == match_session_id), "Active Session")
+    match_session_name = "Active Session"
     
     return {
         "session_name": match_session_name,
