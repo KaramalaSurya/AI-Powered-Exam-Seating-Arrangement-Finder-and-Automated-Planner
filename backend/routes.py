@@ -318,13 +318,8 @@ def save_arrangements(payload: IngestionSaveRequest):
     
     try:
         # Clear existing room layouts and seating ranges for this session to update fresh
-        cursor.execute("SELECT id FROM rooms WHERE session_id = ?", (target_session_id,))
-        room_ids = [row["id"] for row in cursor.fetchall()]
-        
-        if room_ids:
-            placeholders = ",".join("?" for _ in room_ids)
-            cursor.execute(f"DELETE FROM seating_ranges WHERE room_id IN ({placeholders})", room_ids)
-            cursor.execute("DELETE FROM rooms WHERE session_id = ?", (target_session_id,))
+        cursor.execute("DELETE FROM seating_ranges WHERE session_id = ?", (target_session_id,))
+        cursor.execute("DELETE FROM rooms WHERE session_id = ?", (target_session_id,))
             
         room_id_map = {}
         room_range_counters = {}
@@ -918,7 +913,7 @@ def get_active_slots_for_students():
                 if norm_reg in norm_sched or norm_sched in norm_reg or norm_reg == "general":
                     regs_for_subject.append(r)
                     
-            # Fetch all seating ranges committed for this session slot to calculate exact AI-ingested student count
+            # Fetch seating ranges committed for this exact subject slot
             cursor.execute("""
                 SELECT roll_prefix, start_num, end_num, subject
                 FROM seating_ranges 
@@ -929,7 +924,7 @@ def get_active_slots_for_students():
             matching_slot_ranges = []
             for rp, s_num, e_num, r_subj in all_session_ranges:
                 norm_r_subj = normalize_subject(r_subj)
-                if norm_r_subj in norm_sched or norm_sched in norm_r_subj or norm_r_subj == "general":
+                if norm_r_subj in norm_sched or norm_sched in norm_r_subj:
                     matching_slot_ranges.append((rp, s_num, e_num))
             
             from backend.agents import expand_roll_range
@@ -938,8 +933,6 @@ def get_active_slots_for_students():
                 students_count = calc_count if calc_count > 0 else (len(regs_for_subject) or 65)
             elif len(regs_for_subject) > 0:
                 students_count = len(regs_for_subject)
-            elif all_session_ranges:
-                students_count = sum(len(expand_roll_range(rp, s_num, e_num)) for rp, s_num, e_num, _ in all_session_ranges)
             else:
                 students_count = 65
                 
