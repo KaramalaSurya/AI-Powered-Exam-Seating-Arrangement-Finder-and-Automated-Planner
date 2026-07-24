@@ -171,7 +171,11 @@ def search_student_seating(
         LEFT JOIN rooms r ON sr.room_id = r.id
         WHERE s.is_active = 1
     """
-    cursor.execute(query)
+    if session_id:
+        query += " AND s.id = ?"
+        cursor.execute(query, (session_id,))
+    else:
+        cursor.execute(query)
     all_ranges = [dict(row) for row in cursor.fetchall()]
     
     # Find matching range
@@ -276,8 +280,6 @@ def update_session_status(session_id: int, data: SessionUpdate):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        if data.is_active:
-            cursor.execute("UPDATE sessions SET is_active = 0 WHERE id != ?", (session_id,))
         cursor.execute("UPDATE sessions SET is_active = ? WHERE id = ?", (1 if data.is_active else 0, session_id))
         conn.commit()
     finally:
