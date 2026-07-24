@@ -1,7 +1,16 @@
 import sqlite3
 import os
 
-DATABASE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mits_exam.db")
+db_env_path = os.environ.get("DATABASE_PATH") or os.environ.get("DATA_DIR")
+if db_env_path:
+    if os.path.isdir(db_env_path):
+        DATABASE_FILE = os.path.join(db_env_path, "mits_exam.db")
+    else:
+        DATABASE_FILE = db_env_path
+else:
+    DATABASE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mits_exam.db")
+
+os.makedirs(os.path.dirname(os.path.abspath(DATABASE_FILE)), exist_ok=True)
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE_FILE)

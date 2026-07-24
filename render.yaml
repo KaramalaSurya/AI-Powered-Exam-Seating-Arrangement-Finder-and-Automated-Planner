@@ -10,6 +10,12 @@ services:
     envVars:
       - key: PYTHONPATH
         value: .
+      - key: DATABASE_PATH
+        value: /var/data/mits_exam.db
+    disk:
+      name: seatx-data
+      mountPath: /var/data
+      sizeGB: 1
 
   # 2. Frontend React Vite Static Site
   - type: static

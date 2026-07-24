@@ -25,3 +25,7 @@ dist-ssr/
 .DS_Store
 .vscode/
 .idea/
+
+# SQLite Database
+*.db
+mits_exam.db
