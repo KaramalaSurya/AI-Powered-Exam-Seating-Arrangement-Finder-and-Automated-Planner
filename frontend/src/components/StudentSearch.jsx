@@ -302,7 +302,7 @@ export default function StudentSearch() {
                   style={{ 
                     padding: '1.5rem', 
                     position: 'relative',
-                    borderLeft: isPublished ? '4px solid var(--accent)' : '4px solid #94a3b8',
+                    borderLeft: isPublished ? '4px solid var(--primary)' : '4px solid #94a3b8',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
@@ -348,7 +348,7 @@ export default function StudentSearch() {
                       </div>
                       
                       {isPublished ? (
-                        <span style={{ fontSize: '0.72rem', color: 'var(--accent)', fontWeight: 700 }}>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 800 }}>
                           Live
                         </span>
                       ) : (

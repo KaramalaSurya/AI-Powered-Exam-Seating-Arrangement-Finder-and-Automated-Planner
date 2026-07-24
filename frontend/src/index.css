@@ -17,7 +17,7 @@
   
   --secondary: #2563eb;
   --secondary-glow: rgba(37, 99, 235, 0.1);
-  --accent: #059669;
+  --accent: #2563eb;
   --warning: #d97706;
   --error: #dc2626;
   
@@ -285,7 +285,7 @@ header {
   letter-spacing: 0.02em;
 }
 
-.badge-success { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+.badge-success { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
 .badge-warning { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
 .badge-danger { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 .badge-info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
