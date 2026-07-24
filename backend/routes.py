@@ -238,11 +238,6 @@ def list_sessions():
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM sessions ORDER BY created_at DESC")
     sessions = [dict(s) for s in cursor.fetchall()]
-    if not sessions:
-        cursor.execute("INSERT INTO sessions (name, is_active) VALUES ('Semester Exams 2026', 1)")
-        conn.commit()
-        cursor.execute("SELECT * FROM sessions ORDER BY created_at DESC")
-        sessions = [dict(s) for s in cursor.fetchall()]
     conn.close()
     return sessions
 
@@ -251,7 +246,11 @@ def create_session(data: SessionCreate):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("INSERT INTO sessions (name, is_active) VALUES (?, 0)", (data.name,))
+        cursor.execute("SELECT COUNT(*) FROM sessions WHERE is_active = 1")
+        has_active = cursor.fetchone()[0] > 0
+        is_active = 0 if has_active else 1
+        
+        cursor.execute("INSERT INTO sessions (name, is_active) VALUES (?, ?)", (data.name, is_active))
         conn.commit()
         session_id = cursor.lastrowid
         conn.close()
