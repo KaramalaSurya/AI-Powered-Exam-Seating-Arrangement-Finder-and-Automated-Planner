@@ -353,13 +353,14 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          session_id: parseInt(activeSessionId),
+          session_id: activeSessionId ? parseInt(activeSessionId) : 0,
           text_content: classroomText
         })
       });
       const data = await res.json();
       if (res.ok) {
         alert(`Successfully parsed and seeded ${data.count} classrooms!`);
+        fetchSessions();
         fetchPlannerStatus(activeSessionId);
         fetchStats();
       } else {

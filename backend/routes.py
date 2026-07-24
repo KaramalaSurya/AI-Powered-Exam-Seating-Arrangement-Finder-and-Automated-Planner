@@ -309,30 +309,26 @@ def save_arrangements(payload: IngestionSaveRequest):
     Creates rooms if they do not exist and maps ranges accordingly.
     """
     conn = get_db_connection()
+    target_session_id = get_or_create_valid_session_id(payload.session_id, conn)
     cursor = conn.cursor()
     
     try:
         # Clear existing room layouts and seating ranges for this session to update fresh
-        # First, find rooms under this session
-        cursor.execute("SELECT id FROM rooms WHERE session_id = ?", (payload.session_id,))
+        cursor.execute("SELECT id FROM rooms WHERE session_id = ?", (target_session_id,))
         room_ids = [row["id"] for row in cursor.fetchall()]
         
         if room_ids:
-            # Delete ranges
             placeholders = ",".join("?" for _ in room_ids)
             cursor.execute(f"DELETE FROM seating_ranges WHERE room_id IN ({placeholders})", room_ids)
-            # Delete rooms
-            cursor.execute("DELETE FROM rooms WHERE session_id = ?", (payload.session_id,))
+            cursor.execute("DELETE FROM rooms WHERE session_id = ?", (target_session_id,))
             
-        # Track map of (block, room_name) -> room_id to keep order_index offsets correct
         room_id_map = {}
-        room_range_counters = {} # (block, room_name) -> total accumulated students
+        room_range_counters = {}
         
         for entry in payload.ranges:
             block = entry.block.strip()
             room_name = entry.room_name.strip()
             
-            # 1. Create or get room
             room_key = (block, room_name)
             if room_key not in room_id_map:
                 students_per_bench = entry.students_per_bench if entry.students_per_bench is not None else 1
@@ -341,7 +337,7 @@ def save_arrangements(payload: IngestionSaveRequest):
                     INSERT INTO rooms (session_id, block, room_name, rows, columns, students_per_bench, capacity, filling_strategy)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
-                    payload.session_id, 
+                    target_session_id, 
                     block, 
                     room_name, 
                     entry.rows, 
@@ -356,17 +352,15 @@ def save_arrangements(payload: IngestionSaveRequest):
             else:
                 room_id = room_id_map[room_key]
                 
-            # Compute order_index for this range
             order_index = room_range_counters[room_key]
             
-            # 2. Insert Seating Range
             cursor.execute("""
                 INSERT INTO seating_ranges (
                     session_id, room_id, roll_prefix, start_num, end_num, padding, 
                     exam_date, exam_time, subject, order_index
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                payload.session_id,
+                target_session_id,
                 room_id,
                 entry.roll_prefix.strip(),
                 str(entry.start_num).strip(),
@@ -483,6 +477,28 @@ def admin_login(data: LoginRequest):
     finally:
         conn.close()
 
+def get_or_create_valid_session_id(session_id: Optional[int], conn: sqlite3.Connection) -> int:
+    cursor = conn.cursor()
+    if session_id and isinstance(session_id, int) and session_id > 0:
+        cursor.execute("SELECT id FROM sessions WHERE id = ?", (session_id,))
+        row = cursor.fetchone()
+        if row:
+            return row["id"]
+            
+    cursor.execute("SELECT id FROM sessions WHERE is_active = 1 LIMIT 1")
+    row = cursor.fetchone()
+    if row:
+        return row["id"]
+        
+    cursor.execute("SELECT id FROM sessions ORDER BY id DESC LIMIT 1")
+    row = cursor.fetchone()
+    if row:
+        return row["id"]
+        
+    cursor.execute("INSERT INTO sessions (name, is_active) VALUES ('Semester Exams 2026', 1)")
+    conn.commit()
+    return cursor.lastrowid
+
 @router.post("/admin/seed-rooms")
 def seed_rooms_endpoint(data: SeedRoomsRequest):
     conn = get_db_connection()
@@ -555,14 +571,15 @@ def seed_rooms_endpoint(data: SeedRoomsRequest):
         if not rooms_to_seed:
             raise HTTPException(status_code=400, detail="No classrooms parsed from the text content. Please check format.")
             
+        target_session_id = get_or_create_valid_session_id(data.session_id, conn)
         cursor = conn.cursor()
         
         # Clear existing rooms under this session to start completely fresh
-        cursor.execute("DELETE FROM rooms WHERE session_id = ?", (data.session_id,))
+        cursor.execute("DELETE FROM rooms WHERE session_id = ?", (target_session_id,))
         
         # Format list to insert: session_id, block, room_name, rows, columns, benches_per_row, students_per_bench, filling_strategy, capacity
         rooms_data = [
-            (data.session_id, block, room_name, 6, 4, 1, 1, 'column_wise', 24)
+            (target_session_id, block, room_name, 6, 4, 1, 1, 'column_wise', 24)
             for block, room_name in rooms_to_seed
         ]
         
@@ -591,13 +608,14 @@ async def ingest_students(
         raise HTTPException(status_code=400, detail="No students parsed from registration list.")
         
     conn = get_db_connection()
+    target_session_id = get_or_create_valid_session_id(session_id, conn)
     cursor = conn.cursor()
     try:
         # Clear existing registrations for this session
-        cursor.execute("DELETE FROM student_registrations WHERE session_id = ?", (session_id,))
+        cursor.execute("DELETE FROM student_registrations WHERE session_id = ?", (target_session_id,))
         
         # Insert
-        insert_data = [(session_id, s["roll_number"], s["subject"]) for s in students]
+        insert_data = [(target_session_id, s["roll_number"], s["subject"]) for s in students]
         cursor.executemany("""
             INSERT OR IGNORE INTO student_registrations (session_id, roll_number, subject)
             VALUES (?, ?, ?)
@@ -622,13 +640,14 @@ async def ingest_schedule(
         raise HTTPException(status_code=400, detail="No exams parsed from master schedule.")
         
     conn = get_db_connection()
+    target_session_id = get_or_create_valid_session_id(session_id, conn)
     cursor = conn.cursor()
     try:
         # Clear existing schedules for this session
-        cursor.execute("DELETE FROM exam_schedules WHERE session_id = ?", (session_id,))
+        cursor.execute("DELETE FROM exam_schedules WHERE session_id = ?", (target_session_id,))
         
         # Insert
-        insert_data = [(session_id, s["exam_date"], s["exam_time"], s["subject"]) for s in schedule]
+        insert_data = [(target_session_id, s["exam_date"], s["exam_time"], s["subject"]) for s in schedule]
         cursor.executemany("""
             INSERT OR IGNORE INTO exam_schedules (session_id, exam_date, exam_time, subject)
             VALUES (?, ?, ?, ?)
