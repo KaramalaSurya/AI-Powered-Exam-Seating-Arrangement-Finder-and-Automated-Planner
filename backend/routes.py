@@ -177,15 +177,15 @@ def search_student_seating(
     query = f"""
         SELECT 
             sr.*, 
-            r.block, 
-            r.room_name, 
-            r.rows, 
-            r.columns, 
-            r.benches_per_row,
-            r.students_per_bench,
-            r.filling_strategy
+            COALESCE(r.block, 'Exam Hall') as block, 
+            COALESCE(r.room_name, 'Hall 1') as room_name, 
+            COALESCE(r.rows, 6) as rows, 
+            COALESCE(r.columns, 4) as columns, 
+            COALESCE(r.benches_per_row, 4) as benches_per_row,
+            COALESCE(r.students_per_bench, 1) as students_per_bench,
+            COALESCE(r.filling_strategy, 'serpentine') as filling_strategy
         FROM seating_ranges sr
-        JOIN rooms r ON sr.room_id = r.id
+        LEFT JOIN rooms r ON sr.room_id = r.id
         WHERE sr.session_id IN ({placeholders})
     """
     cursor.execute(query, session_ids)
@@ -209,12 +209,15 @@ def search_student_seating(
     
     # 3. Fetch all ranges for this room (sorted by order_index) for the active session to calculate seating layout offsets
     cursor.execute("""
-        SELECT sr.*, r.block, r.room_name
+        SELECT 
+            sr.*, 
+            COALESCE(r.block, 'Exam Hall') as block, 
+            COALESCE(r.room_name, 'Hall 1') as room_name
         FROM seating_ranges sr
-        JOIN rooms r ON sr.room_id = r.id
-        WHERE sr.room_id = ? AND sr.session_id = ?
+        LEFT JOIN rooms r ON sr.room_id = r.id
+        WHERE sr.session_id = ?
         ORDER BY sr.order_index ASC
-    """, (room_id, match_range["session_id"]))
+    """, (match_range["session_id"],))
     
     ranges_in_room = [dict(r) for r in cursor.fetchall()]
     conn.close()
@@ -360,6 +363,11 @@ def save_arrangements(payload: IngestionSaveRequest):
                     entry.filling_strategy
                 ))
                 room_id = cursor.lastrowid
+                if not room_id:
+                    cursor.execute("SELECT id FROM rooms WHERE session_id = ? AND block = ? AND room_name = ?", (target_session_id, block, room_name))
+                    r_row = cursor.fetchone()
+                    if r_row:
+                        room_id = r_row["id"] if (isinstance(r_row, dict) or hasattr(r_row, "__getitem__")) and "id" in r_row else r_row[0]
                 room_id_map[room_key] = room_id
                 room_range_counters[room_key] = 0
             else:
