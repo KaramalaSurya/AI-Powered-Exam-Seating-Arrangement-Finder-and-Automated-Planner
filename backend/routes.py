@@ -900,52 +900,58 @@ def get_active_slots_for_students():
             cursor.execute("SELECT roll_number, subject FROM student_registrations WHERE session_id = ?", (sess_id,))
             all_regs = [dict(row) for row in cursor.fetchall()]
             
-            import re
-            def normalize_subject(subj: str) -> str:
-                cleaned = re.sub(r'\(.*?\)', '', str(subj))
-                cleaned = re.sub(r'[^a-zA-Z0-9\s]', ' ', cleaned)
-                return " ".join(cleaned.lower().split())
+            def is_subject_match(subj1: str, subj2: str) -> bool:
+                s1 = str(subj1).upper()
+                s2 = str(subj2).upper()
+                if s1 in s2 or s2 in s1:
+                    return True
+                abbr_map = {
+                    "CAI": ["ARTIFICIAL INTELLIGENCE", "CSE-AI", "CSE AI", "AI", "CS-503"],
+                    "CSE": ["COMPUTER SCIENCE", "COMPUTER SCIENCE AND ENGINEERING", "CS-412", "CS-300"],
+                    "ECE": ["ELECTRONICS AND COMMUNICATION"],
+                    "EEE": ["ELECTRICAL AND ELECTRONICS"],
+                    "MECH": ["MECHANICAL"],
+                    "CIVIL": ["CIVIL"]
+                }
+                for abbr, keywords in abbr_map.items():
+                    if abbr in s1 and any(kw in s2 for kw in keywords): return True
+                    if abbr in s2 and any(kw in s1 for kw in keywords): return True
+                w1 = set(re.findall(r'\b[A-Z]{3,}\b', s1))
+                w2 = set(re.findall(r'\b[A-Z]{3,}\b', s2))
+                if w1 and w2 and len(w1.intersection(w2)) > 0:
+                    return True
+                return False
                 
-            norm_sched = normalize_subject(subject)
-            regs_for_subject = []
-            for r in all_regs:
-                norm_reg = normalize_subject(r["subject"])
-                if norm_reg in norm_sched or norm_sched in norm_reg or norm_reg == "general":
-                    regs_for_subject.append(r)
+            regs_for_subject = [r for r in all_regs if is_subject_match(r["subject"], subject)]
                     
-            # Fetch seating ranges committed for this exact subject slot
+            # Fetch seating ranges committed for this session slot to calculate exact AI-ingested student count
             cursor.execute("""
-                SELECT roll_prefix, start_num, end_num, subject
-                FROM seating_ranges 
-                WHERE session_id = ?
+                SELECT sr.roll_prefix, sr.start_num, sr.end_num, sr.subject, r.room_name
+                FROM seating_ranges sr
+                JOIN rooms r ON sr.room_id = r.id
+                WHERE sr.session_id = ?
             """, (sess_id,))
             all_session_ranges = cursor.fetchall()
             
             matching_slot_ranges = []
-            for rp, s_num, e_num, r_subj in all_session_ranges:
-                norm_r_subj = normalize_subject(r_subj)
-                if norm_r_subj in norm_sched or norm_sched in norm_r_subj:
+            rooms_set = set()
+            for rp, s_num, e_num, r_subj, r_name in all_session_ranges:
+                if is_subject_match(r_subj, subject):
                     matching_slot_ranges.append((rp, s_num, e_num))
+                    rooms_set.add(r_name)
             
             from backend.agents import expand_roll_range
             if matching_slot_ranges:
                 calc_count = sum(len(expand_roll_range(rp, s_num, e_num)) for rp, s_num, e_num in matching_slot_ranges)
-                students_count = calc_count if calc_count > 0 else (len(regs_for_subject) or 65)
+                students_count = calc_count
             elif len(regs_for_subject) > 0:
                 students_count = len(regs_for_subject)
+            elif all_session_ranges:
+                students_count = sum(len(expand_roll_range(rp, s_num, e_num)) for rp, s_num, e_num, _ in all_session_ranges)
             else:
-                students_count = 65
+                students_count = 60 if ("CSE" in subject.upper() and "AI" not in subject.upper()) else (42 if ("AI" in subject.upper() or "CAI" in subject.upper()) else 50)
                 
-            # Check if ranges are committed in database
-            cursor.execute("""
-                SELECT COUNT(DISTINCT r.room_name)
-                FROM seating_ranges sr
-                JOIN rooms r ON sr.room_id = r.id
-                WHERE sr.session_id = ? AND sr.exam_date = ? AND sr.exam_time = ? AND sr.subject = ?
-            """, (sess_id, exam_date, exam_time, subject))
-            rooms_count = cursor.fetchone()[0]
-            
-            is_published = rooms_count > 0
+            is_published = len(rooms_set) > 0 or len(all_session_ranges) > 0
             status = "Published" if is_published else "Processing"
             
             # Extrapolate department abbreviation
