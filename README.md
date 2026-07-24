@@ -1,4 +1,4 @@
-# AI-Powered-Exam-Seating-Arrangement-Finder-and-Automated-Planner
+# AI-Powered Examination Seating Arrangement Finder & Automated Planner (SeatX)
 
 An AI-powered, high-performance examination seating arrangement coordinator and public student finder portal. This application streamlines institutional exam coordination through automated mixed-subject checkerboard seat planning, AI document digitisation, multi-session active searches, and visual door chart generation.
 
@@ -12,10 +12,13 @@ An AI-powered, high-performance examination seating arrangement coordinator and 
 3. **Dynamic Classroom Capacities**: Supports customizable seat configs:
    * **1 Student per Bench (24/room capacity)**.
    * **2 Students per Bench (48/room capacity)** with automatic bench-mate subject separation.
-4. **AI-Powered Notice Ingestion**: Upload scanned physical seating charts and board lists. The system digitizes them using **Google Gemini Pro Vision OCR** and maps them to active database seating ranges.
-5. **Multi-Session Active Search**: Allows the administrator to toggle **multiple exam sessions active concurrently**. The student finder lookup scans across all active sessions in parallel.
-6. **O(1) Direct Bounds Search Lookup**: High-speed search performance (**3.76 ms** response time) utilizing direct alphanumeric bounds evaluation.
-7. **Automated Door Chart Rendering**: Generates print-ready PDFs showing split-bench cards colored by subject using **ReportLab**.
+4. **Cloud Database Persistence (Render PostgreSQL)**: Built-in dual database support using **PostgreSQL** in production for 100% data persistence across container restarts, and **SQLite** for offline local development.
+5. **AI-Powered Notice Ingestion**: Upload scanned physical seating charts and board lists. Digitizes document images and PDFs using **Google Gemini Pro Vision OCR** and maps them to active database seating ranges.
+6. **Multi-Session Active Search**: Allows administrators to toggle multiple exam sessions active concurrently. The student finder lookup scans across all active sessions in parallel.
+7. **Executive Student Seating Slips & Interactive Room Grid Maps**:
+   * Generates printable executive seating ticket slips with seat callouts and QR code validation frames.
+   * Displays visual 2D classroom grid maps with podium bar indicators and color-coded seat status badges (*Your Seat*, *Occupied*, *Vacant*).
+8. **Automated Door Chart Rendering**: Generates print-ready PDFs showing split-bench cards colored by subject using **ReportLab**.
 
 ---
 
@@ -33,7 +36,7 @@ graph TD
 
     %% API endpoints
     subgraph API [REST API Layer]
-        UploadRoute["POST /api/admin/upload"]
+        UploadRoute["POST /api/admin/ingest-students"]
         PlannerRoute["POST /api/admin/run-allocation"]
         SearchRoute["GET /api/student/search"]
     end
@@ -45,7 +48,7 @@ graph TD
         SearchService[Search Service Optimizer]
     end
 
-    %% Agents
+    %% Dedicated Agents
     subgraph Agents [Dedicated AI & Seat Resolution Agents]
         ExtractAgent[Document Extraction Agent]
         OCRAgent[Gemini Vision OCR Agent]
@@ -54,13 +57,13 @@ graph TD
         SeatMapAgent[Seat Mapping Agent]
     end
 
-    %% SQLite Database
+    %% Database Storage
     subgraph Storage [Database Persistence Layer]
-        DB[(SQLite Database)]
+        DB[(PostgreSQL / SQLite Database)]
     end
 
     %% Connectors
-    Admin -->|Upload notice| UploadRoute
+    Admin -->|Upload registrations / schedules| UploadRoute
     Admin -->|Configure slot & capacity| PlannerRoute
     Finder -->|Search Roll Number| SearchRoute
     
@@ -80,17 +83,14 @@ graph TD
     SeatMapAgent -->|Map to exact row/col/side| Finder
 ```
 
-### B. Core AI Ingestion Pipeline (Flow Chart Diagram)
-
-![Original System Ingestion Flow](assets/architecture_original.png)
-
 ---
 
 ## 🛠️ Technology Stack
 
-* **Backend**: Python 3.10+, FastAPI, SQLite (sqlite3), ReportLab, pdfplumber, openpyxl.
-* **Frontend**: React.js, Vite, Lucide Icons, Vanilla CSS Variables.
-* **AI Integration**: Google Gemini API.
+* **Backend**: Python 3.10+, FastAPI, Uvicorn, PostgreSQL (`psycopg2-binary`), SQLite (`sqlite3`), ReportLab, pdfplumber, openpyxl.
+* **Frontend**: React 19, Vite, Lucide Icons, Plus Jakarta Sans Typography, Custom Glassmorphic CSS Design System.
+* **AI Integration**: Google Gemini API (Vision OCR & Document Parsing).
+* **Cloud Infrastructure**: Render (FastAPI Web Service + React Static Site + Managed PostgreSQL).
 
 ---
 
@@ -100,38 +100,39 @@ graph TD
 ├── backend/
 │   ├── main.py                    # FastAPI entry point & lifespan handler
 │   ├── routes.py                  # API endpoints (seating search, sessions, planner)
-│   ├── database.py                # Database connection, schemas, and seeding
+│   ├── database.py                # Dual DB wrapper (PostgreSQL & SQLite) and schemas
 │   ├── allocation.py              # Seating Planner algorithm (12-12 mixed seating)
 │   ├── ingestion.py               # Document extraction (PDF / Excel parsing)
 │   ├── reports.py                 # ReportLab PDF door charts rendering engine
 │   ├── agents.py                  # Gemini AI Orchestrator & SeatMappingAgent
-│   ├── requirements.txt           # Backend python dependencies
-│   └── mits_exam.db               # SQLite database file
+│   ├── requirements.txt           # Backend Python dependencies
+│   └── mits_exam.db               # Local SQLite database file
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── AdminPortal.jsx    # UI for uploads, planners, and sessions
-│   │   │   └── StudentFinder.jsx  # UI for student seating search lookup
+│   │   │   └── StudentSearch.jsx  # UI for student seating search lookup
 │   │   ├── App.jsx                # Client-side router and theme shell
 │   │   └── index.css              # Glassmorphic design system and styling
 │   └── package.json               # Frontend React dependencies
-└── README.md                      # Project manual
+├── render.yaml                    # Render Blueprint Deployment Configuration
+└── README.md                      # Project documentation manual
 ```
 
 ---
 
-## 🚀 Installation & Setup
+## 🚀 Installation & Local Setup
 
 ### 1. Backend Setup
 1. Navigate to the backend workspace directory:
    ```bash
    cd backend
    ```
-2. Create and activate a virtual environment:
+2. Create and activate a Python virtual environment:
    ```bash
    python -m venv venv
-   # On Windows:
-   venv\Scripts\activate
+   # On Windows (PowerShell):
+   .\venv\Scripts\Activate.ps1
    # On Linux/macOS:
    source venv/bin/activate
    ```
@@ -139,9 +140,9 @@ graph TD
    ```bash
    pip install -r requirements.txt
    ```
-4. Run database initialization and seeds:
+4. Run database initialization:
    ```bash
-   python -c "from backend.database import init_db; init_db()"
+   python database.py
    ```
 
 ### 2. Frontend Setup
@@ -158,33 +159,43 @@ graph TD
 
 ## 🏃 Running the Application
 
-For development, run both the backend server and frontend client concurrently:
-
 ### Run Backend API Server
-In the root directory, activate the Python virtual environment and launch:
+In the root directory, launch the FastAPI server:
 ```bash
 python -m backend.main
 ```
-The FastAPI documentation will be available at `http://localhost:8085/docs`.
+* **API Server**: `http://localhost:8085`
+* **Swagger API Docs**: `http://localhost:8085/docs`
 
 ### Run Frontend Client
-In the `frontend` folder, execute the Vite development command:
+In the `frontend` folder, execute the Vite dev command:
 ```bash
 npm run dev
 ```
-The web portal will open at `http://localhost:5173`.
+* **Web Portal**: `http://localhost:5173`
+
+---
+
+## ☁️ Cloud Deployment (Render Blueprint)
+
+The application includes a `render.yaml` blueprint ready for 1-click deployment on Render:
+
+1. Connect your GitHub repository to [Render](https://dashboard.render.com/).
+2. Create a new **Blueprint Service** from your repository.
+3. Render automatically provisions:
+   * **`seatx-backend`**: Python FastAPI Web Service.
+   * **`seatx-frontend`**: React Vite Static Site.
+   * **`seatx-postgres`**: Managed PostgreSQL Database.
 
 ---
 
 ## 🧪 Testing
 
-The backend includes tests for validation logic and checkerboard algorithms.
-
-* Run seating allocation checkerboard tests:
+* Run seating allocation checkerboard algorithm tests:
   ```bash
   python backend/test_allocation.py
   ```
-* Run parsing and OCR agent tests:
+* Run parsing and AI agent tests:
   ```bash
   python -m backend.test_agents
   ```
