@@ -499,7 +499,7 @@ def get_or_create_valid_session_id(session_id: Optional[int], conn: sqlite3.Conn
     if row:
         return row["id"]
         
-    cursor.execute("INSERT INTO sessions (name, is_active) VALUES ('Semester Exams 2026', 1)")
+    cursor.execute("INSERT INTO sessions (name, is_active) VALUES ('Default Exam Session', 1)")
     conn.commit()
     return cursor.lastrowid
 

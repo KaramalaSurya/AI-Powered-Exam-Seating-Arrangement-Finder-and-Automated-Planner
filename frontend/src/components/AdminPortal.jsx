@@ -281,9 +281,11 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
   };
 
   const resolveTargetSessionId = () => {
-    if (activeSessionId) return activeSessionId;
+    if (activeSessionId) return parseInt(activeSessionId);
+    const active = sessions.find(s => s.is_active === 1);
+    if (active) return active.id;
     if (sessions && sessions.length > 0) return sessions[0].id;
-    return 1;
+    return 0;
   };
 
   const handleStudentsUpload = async (e) => {
@@ -351,13 +353,14 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
       alert("Please paste/enter classroom layout text first.");
       return;
     }
+    const targetSessId = resolveTargetSessionId();
     setSeedingInventory(true);
     try {
       const res = await fetch('/api/admin/seed-rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          session_id: activeSessionId ? parseInt(activeSessionId) : 0,
+          session_id: targetSessId,
           text_content: classroomText
         })
       });
@@ -365,7 +368,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
       if (res.ok) {
         alert(`Successfully parsed and seeded ${data.count} classrooms!`);
         fetchSessions();
-        fetchPlannerStatus(activeSessionId);
+        fetchPlannerStatus(targetSessId);
         fetchStats();
       } else {
         alert(data.detail || 'Failed to seed classrooms.');
