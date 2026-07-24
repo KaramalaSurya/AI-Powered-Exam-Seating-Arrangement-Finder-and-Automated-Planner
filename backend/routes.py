@@ -370,9 +370,9 @@ def save_arrangements(payload: IngestionSaveRequest):
                 str(entry.start_num).strip(),
                 str(entry.end_num).strip(),
                 entry.padding,
-                entry.exam_date,
-                entry.exam_time,
-                entry.subject,
+                entry.exam_date.strip() if (entry.exam_date and entry.exam_date.strip()) else "2026-07-06",
+                entry.exam_time.strip() if (entry.exam_time and entry.exam_time.strip()) else "01:30 PM TO 03:00 PM",
+                entry.subject.strip(),
                 order_index
             ))
             
@@ -918,22 +918,20 @@ def get_active_slots_for_students():
                 if norm_reg in norm_sched or norm_sched in norm_reg:
                     regs_for_subject.append(r)
                     
-            students_count = len(regs_for_subject)
-            if students_count == 0:
-                cursor.execute("""
-                    SELECT roll_prefix, start_num, end_num 
-                    FROM seating_ranges 
-                    WHERE session_id = ? AND exam_date = ? AND exam_time = ? AND subject = ?
-                """, (sess_id, exam_date, exam_time, subject))
-                ranges_for_slot = cursor.fetchall()
-                if ranges_for_slot:
-                    from backend.agents import expand_roll_range
-                    calc_count = 0
-                    for rp, start_num, end_num in ranges_for_slot:
-                        calc_count += len(expand_roll_range(rp, start_num, end_num))
-                    students_count = calc_count if calc_count > 0 else 65
-                else:
-                    students_count = 65
+            # Calculate total student count directly from seating ranges if published, else from student_registrations
+            cursor.execute("""
+                SELECT roll_prefix, start_num, end_num 
+                FROM seating_ranges 
+                WHERE session_id = ? AND exam_date = ? AND exam_time = ? AND subject = ?
+            """, (sess_id, exam_date, exam_time, subject))
+            ranges_for_slot = cursor.fetchall()
+            
+            if ranges_for_slot:
+                from backend.agents import expand_roll_range
+                calc_count = sum(len(expand_roll_range(rp, s_num, e_num)) for rp, s_num, e_num in ranges_for_slot)
+                students_count = calc_count if calc_count > 0 else (len(regs_for_subject) or 65)
+            else:
+                students_count = len(regs_for_subject) or 65
                 
             # Check if ranges are committed in database
             cursor.execute("""
