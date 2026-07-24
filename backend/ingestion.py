@@ -25,37 +25,47 @@ def normalize_date_string(date_str: str) -> str:
     return normalized
 
 
+def is_valid_roll_candidate(token: str) -> bool:
+    """
+    Validates if a cleaned token represents a valid student HTNO / PIN / Roll Number.
+    Standard patterns: 23711A0518, 24691A05R0, 21711A0401, 22711A0501, 23711A05011, etc.
+    """
+    cleaned = re.sub(r'^[^\w]+|[^\w]+$', '', str(token).strip()).upper()
+    if not (7 <= len(cleaned) <= 14):
+        return False
+    # Must start with 2 digits (e.g. 21, 22, 23, 24, 25)
+    if not re.match(r'^\d{2}[A-Z0-9]{5,12}$', cleaned):
+        return False
+    excluded = ["SUBJECT", "SCHEDULE", "REGISTER", "SEATING", "STUDENT", "SEMESTER", "SECTION", "BRANCH", "PASSED", "FAILED", "TOTAL", "COLLEGE"]
+    if any(k in cleaned for k in excluded):
+        return False
+    return True
+
 def parse_student_pin_list(file_bytes: bytes, filename: str) -> List[Dict[str, str]]:
     """
-    Parses an uploaded Student Registration / PIN List (PDF or Excel).
+    Parses an uploaded Student Registration / PIN List (PDF, Excel, CSV, or TXT).
     Returns a list of dicts: [{"roll_number": "...", "subject": "..."}]
     """
     ext = filename.split('.')[-1].lower()
     students = []
+    seen_rolls = set()
 
-    # Roll number regex (MITS standard is 10 alphanumeric characters e.g. 23711A0518, 24691A05R0)
-    # Usually starts with 2 digits, then 5 characters (e.g. 711A0, 691A0), then 3 characters.
-    roll_pattern = re.compile(r'\b\d{2}[A-Z0-9]{8}\b', re.IGNORECASE)
+    # Broad roll pattern (e.g. 23711A0518, 24691A05R0, 21711A0401)
+    roll_pattern = re.compile(r'\b\d{2}[A-Z0-9]{5,12}\b', re.IGNORECASE)
 
     if ext in ['xlsx', 'xls']:
         try:
             wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
             for sheet in wb.worksheets:
                 sheet_name = sheet.title.strip()
-                
-                # Check headers
-                headers = []
                 roll_col_idx = -1
                 subj_col_idx = -1
                 
                 for r_idx, row in enumerate(sheet.iter_rows(values_only=True)):
                     if not any(row):
                         continue
-                    
-                    # Convert cells to string
                     row_strs = [str(c).strip() if c is not None else "" for c in row]
                     
-                    # Look for headers in first few rows
                     if r_idx < 5 and (roll_col_idx == -1 or subj_col_idx == -1):
                         for c_idx, val in enumerate(row_strs):
                             val_lower = val.lower()
@@ -64,72 +74,112 @@ def parse_student_pin_list(file_bytes: bytes, filename: str) -> List[Dict[str, s
                             if any(h in val_lower for h in ["subject", "course", "paper", "branch"]):
                                 subj_col_idx = c_idx
                         if roll_col_idx != -1:
-                            headers = row_strs
-                            continue # Skip header row from student parsing
+                            continue
                     
-                    # Parse student data
                     if roll_col_idx != -1 and roll_col_idx < len(row_strs):
-                        roll = row_strs[roll_col_idx]
-                        if roll_pattern.match(roll):
-                            subject = "General"
-                            if subj_col_idx != -1 and subj_col_idx < len(row_strs) and row_strs[subj_col_idx]:
-                                subject = row_strs[subj_col_idx]
-                            elif sheet_name and not sheet_name.lower().startswith("sheet"):
-                                subject = sheet_name
-                            
-                            students.append({
-                                "roll_number": roll.upper(),
-                                "subject": subject
-                            })
+                        cell_val = row_strs[roll_col_idx]
+                        if is_valid_roll_candidate(cell_val):
+                            roll = re.sub(r'^[^\w]+|[^\w]+$', '', cell_val).upper()
+                            if roll not in seen_rolls:
+                                seen_rolls.add(roll)
+                                subject = "General"
+                                if subj_col_idx != -1 and subj_col_idx < len(row_strs) and row_strs[subj_col_idx]:
+                                    subject = row_strs[subj_col_idx]
+                                elif sheet_name and not sheet_name.lower().startswith("sheet"):
+                                    subject = sheet_name
+                                students.append({"roll_number": roll, "subject": subject})
                     else:
-                        # Fallback heuristic: search cells for roll number
-                        for c_idx, cell_val in enumerate(row_strs):
-                            if roll_pattern.match(cell_val):
-                                # Found a roll, look for subject in subsequent cells or sheet name
-                                roll = cell_val
-                                subject = sheet_name if not sheet_name.lower().startswith("sheet") else "General"
-                                # Look for a text cell that doesn't look like serial/roll as subject
-                                for other_val in row_strs:
-                                    if other_val and other_val != roll and not roll_pattern.match(other_val) and len(other_val) > 4:
-                                        if not other_val.isdigit():
-                                            subject = other_val
-                                            break
-                                students.append({
-                                    "roll_number": roll.upper(),
-                                    "subject": subject
-                                })
+                        for cell_val in row_strs:
+                            if is_valid_roll_candidate(cell_val):
+                                roll = re.sub(r'^[^\w]+|[^\w]+$', '', cell_val).upper()
+                                if roll not in seen_rolls:
+                                    seen_rolls.add(roll)
+                                    subject = sheet_name if not sheet_name.lower().startswith("sheet") else "General"
+                                    for other_val in row_strs:
+                                        if other_val and other_val != cell_val and not is_valid_roll_candidate(other_val) and len(other_val) > 4:
+                                            if not other_val.isdigit():
+                                                subject = other_val
+                                                break
+                                    students.append({"roll_number": roll, "subject": subject})
                                 break
         except Exception as e:
             print(f"Error parsing Excel: {e}")
             
+    elif ext in ['csv', 'txt']:
+        try:
+            content = file_bytes.decode('utf-8', errors='ignore')
+            reader = csv.reader(io.StringIO(content))
+            for row in reader:
+                for cell in row:
+                    matches = roll_pattern.findall(cell)
+                    if not matches:
+                        tokens = re.split(r'[\s,;\t|]+', cell)
+                    else:
+                        tokens = matches
+                    for token in tokens:
+                        cleaned = re.sub(r'^[^\w]+|[^\w]+$', '', token).upper()
+                        if is_valid_roll_candidate(cleaned) and cleaned not in seen_rolls:
+                            seen_rolls.add(cleaned)
+                            students.append({"roll_number": cleaned, "subject": "General"})
+        except Exception as e:
+            print(f"Error parsing CSV/TXT: {e}")
+
     elif ext == 'pdf':
         try:
             current_subject = "General"
             with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
                 for page in pdf.pages:
-                    text = page.extract_text()
-                    if not text:
-                        continue
-                    
-                    lines = text.split('\n')
-                    for line in lines:
-                        line = line.strip()
-                        if not line:
-                            continue
-                        
-                        subj_match = re.search(r'(?:subject|course|paper|branch)\s*:\s*([^\n\r|]+)', line, re.IGNORECASE)
-                        if subj_match:
-                            current_subject = subj_match.group(1).strip()
-                            continue
+                    # 1. Try table extraction first (captures structured student lists)
+                    tables = page.extract_tables() or []
+                    for table in tables:
+                        for row in table:
+                            if not row:
+                                continue
+                            row_cells = [str(c).strip() if c is not None else "" for c in row]
                             
-                        # If a line has a roll number, extract it
-                        rolls_on_line = roll_pattern.findall(line)
-                        if rolls_on_line:
-                            for roll in rolls_on_line:
-                                students.append({
-                                    "roll_number": roll.upper(),
-                                    "subject": current_subject
-                                })
+                            # Check for subject header in row
+                            for cell in row_cells:
+                                subj_match = re.search(r'(?:subject|course|paper|branch)\s*:\s*([^\n\r|]+)', cell, re.IGNORECASE)
+                                if subj_match:
+                                    current_subject = subj_match.group(1).strip()
+                            
+                            # Scan cells for student roll numbers
+                            for cell in row_cells:
+                                matches = roll_pattern.findall(cell)
+                                tokens = matches if matches else re.split(r'[\s,;\t|]+', cell)
+                                for token in tokens:
+                                    cleaned = re.sub(r'^[^\w]+|[^\w]+$', '', token).upper()
+                                    if is_valid_roll_candidate(cleaned) and cleaned not in seen_rolls:
+                                        seen_rolls.add(cleaned)
+                                        students.append({
+                                            "roll_number": cleaned,
+                                            "subject": current_subject
+                                        })
+
+                    # 2. Extract plain text for un-tabled text lines
+                    text = page.extract_text()
+                    if text:
+                        lines = text.split('\n')
+                        for line in lines:
+                            line = line.strip()
+                            if not line:
+                                continue
+                            
+                            subj_match = re.search(r'(?:subject|course|paper|branch)\s*:\s*([^\n\r|]+)', line, re.IGNORECASE)
+                            if subj_match:
+                                current_subject = subj_match.group(1).strip()
+                                continue
+                            
+                            matches = roll_pattern.findall(line)
+                            tokens = matches if matches else re.split(r'[\s,;\t|]+', line)
+                            for token in tokens:
+                                cleaned = re.sub(r'^[^\w]+|[^\w]+$', '', token).upper()
+                                if is_valid_roll_candidate(cleaned) and cleaned not in seen_rolls:
+                                    seen_rolls.add(cleaned)
+                                    students.append({
+                                        "roll_number": cleaned,
+                                        "subject": current_subject
+                                    })
         except Exception as e:
             print(f"Error parsing PDF: {e}")
             
