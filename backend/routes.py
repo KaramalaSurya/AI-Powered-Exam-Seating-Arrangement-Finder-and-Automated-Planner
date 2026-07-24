@@ -98,25 +98,34 @@ def get_gemini_api_key() -> Optional[str]:
 # ==========================================
 
 def is_roll_in_range(roll_num: str, prefix: str, start_str: str, end_str: str) -> bool:
+    roll_num = str(roll_num).strip().upper()
+    prefix = str(prefix).strip().upper()
+    start_str = str(start_str).strip().upper()
+    end_str = str(end_str).strip().upper()
+    
     if not prefix or start_str == "Empty" or end_str == "Empty":
         return False
+        
+    from backend.agents import expand_roll_range, fix_ocr_suffix
+    start_clean = fix_ocr_suffix(start_str)
+    end_clean = fix_ocr_suffix(end_str)
+    
+    expanded = expand_roll_range(prefix, start_clean, end_clean)
+    if expanded and roll_num in expanded:
+        return True
         
     if not roll_num.startswith(prefix):
         return False
         
     suffix = roll_num[len(prefix):]
     
-    # Numeric comparison
-    if start_str.isdigit() and end_str.isdigit() and suffix.isdigit():
-        return int(start_str) <= int(suffix) <= int(end_str)
+    if start_clean.isdigit() and end_clean.isdigit() and suffix.isdigit():
+        return int(start_clean) <= int(suffix) <= int(end_clean)
         
-    # Lexicographical comparison for alphanumeric JNTU suffixes of same length
-    if len(start_str) == len(end_str) == len(suffix):
-        return start_str <= suffix <= end_str
+    if len(start_clean) == len(end_clean) == len(suffix):
+        return start_clean <= suffix <= end_clean
         
-    from backend.agents import expand_roll_range
-    expanded = expand_roll_range(prefix, start_str, end_str)
-    return roll_num in expanded
+    return False
 
 @router.get("/student/active-sessions")
 def get_active_sessions_for_students():
