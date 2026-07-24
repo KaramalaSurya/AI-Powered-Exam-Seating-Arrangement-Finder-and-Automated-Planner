@@ -28,17 +28,31 @@ def normalize_date_string(date_str: str) -> str:
 def is_valid_roll_candidate(token: str) -> bool:
     """
     Validates if a cleaned token represents a valid student HTNO / PIN / Roll Number.
-    Standard patterns: 23711A0518, 24691A05R0, 21711A0401, 22711A0501, 23711A05011, etc.
+    Supports short codes (e.g. 1D36, 1D01), full HTNOs (23711A0518, 24691A05R0), numeric PINs, etc.
     """
     cleaned = re.sub(r'^[^\w]+|[^\w]+$', '', str(token).strip()).upper()
-    if not (7 <= len(cleaned) <= 14):
+    
+    if not (3 <= len(cleaned) <= 18):
         return False
-    # Must start with 2 digits (e.g. 21, 22, 23, 24, 25)
-    if not re.match(r'^\d{2}[A-Z0-9]{5,12}$', cleaned):
+        
+    if not any(c.isdigit() for c in cleaned):
         return False
-    excluded = ["SUBJECT", "SCHEDULE", "REGISTER", "SEATING", "STUDENT", "SEMESTER", "SECTION", "BRANCH", "PASSED", "FAILED", "TOTAL", "COLLEGE"]
-    if any(k in cleaned for k in excluded):
+        
+    excluded = [
+        "SUBJECT", "SCHEDULE", "REGISTER", "REGISTERED", "SEATING", "STUDENT", "STUDENTS",
+        "SEMESTER", "SECTION", "BRANCH", "PASSED", "FAILED", "TOTAL", "COLLEGE", "ACADEMIC",
+        "EXAMINATION", "EXAMINATIONS", "DATE", "TIME", "ROOM", "BLOCK", "HALL", "TICKET",
+        "PRESENT", "ABSENT", "REMARKS", "PAGE", "SLNO", "SNO", "SERIAL", "COURSE", "NAME",
+        "GENERAL", "MID1", "MID2", "MID", "MIDTERM"
+    ]
+    if cleaned in excluded:
         return False
+        
+    # If pure digits, must be at least 3 digits (e.g. 101, 102, 23001)
+    if cleaned.isdigit():
+        return len(cleaned) >= 3
+        
+    # If contains digits and letters (e.g. 1D36, 23711A0518, 24691A05R0, 1D01, 5A36)
     return True
 
 def parse_student_pin_list(file_bytes: bytes, filename: str) -> List[Dict[str, str]]:
@@ -49,9 +63,6 @@ def parse_student_pin_list(file_bytes: bytes, filename: str) -> List[Dict[str, s
     ext = filename.split('.')[-1].lower()
     students = []
     seen_rolls = set()
-
-    # Broad roll pattern (e.g. 23711A0518, 24691A05R0, 21711A0401)
-    roll_pattern = re.compile(r'\b\d{2}[A-Z0-9]{5,12}\b', re.IGNORECASE)
 
     if ext in ['xlsx', 'xls']:
         try:
@@ -78,29 +89,27 @@ def parse_student_pin_list(file_bytes: bytes, filename: str) -> List[Dict[str, s
                     
                     if roll_col_idx != -1 and roll_col_idx < len(row_strs):
                         cell_val = row_strs[roll_col_idx]
-                        if is_valid_roll_candidate(cell_val):
-                            roll = re.sub(r'^[^\w]+|[^\w]+$', '', cell_val).upper()
-                            if roll not in seen_rolls:
-                                seen_rolls.add(roll)
-                                subject = "General"
-                                if subj_col_idx != -1 and subj_col_idx < len(row_strs) and row_strs[subj_col_idx]:
-                                    subject = row_strs[subj_col_idx]
-                                elif sheet_name and not sheet_name.lower().startswith("sheet"):
-                                    subject = sheet_name
-                                students.append({"roll_number": roll, "subject": subject})
+                        cleaned = re.sub(r'^[^\w]+|[^\w]+$', '', cell_val).upper()
+                        if is_valid_roll_candidate(cleaned) and cleaned not in seen_rolls:
+                            seen_rolls.add(cleaned)
+                            subject = "General"
+                            if subj_col_idx != -1 and subj_col_idx < len(row_strs) and row_strs[subj_col_idx]:
+                                subject = row_strs[subj_col_idx]
+                            elif sheet_name and not sheet_name.lower().startswith("sheet"):
+                                subject = sheet_name
+                            students.append({"roll_number": cleaned, "subject": subject})
                     else:
                         for cell_val in row_strs:
-                            if is_valid_roll_candidate(cell_val):
-                                roll = re.sub(r'^[^\w]+|[^\w]+$', '', cell_val).upper()
-                                if roll not in seen_rolls:
-                                    seen_rolls.add(roll)
-                                    subject = sheet_name if not sheet_name.lower().startswith("sheet") else "General"
-                                    for other_val in row_strs:
-                                        if other_val and other_val != cell_val and not is_valid_roll_candidate(other_val) and len(other_val) > 4:
-                                            if not other_val.isdigit():
-                                                subject = other_val
-                                                break
-                                    students.append({"roll_number": roll, "subject": subject})
+                            cleaned = re.sub(r'^[^\w]+|[^\w]+$', '', cell_val).upper()
+                            if is_valid_roll_candidate(cleaned) and cleaned not in seen_rolls:
+                                seen_rolls.add(cleaned)
+                                subject = sheet_name if not sheet_name.lower().startswith("sheet") else "General"
+                                for other_val in row_strs:
+                                    if other_val and other_val != cell_val and not is_valid_roll_candidate(other_val) and len(other_val) > 3:
+                                        if not other_val.isdigit():
+                                            subject = other_val
+                                            break
+                                students.append({"roll_number": cleaned, "subject": subject})
                                 break
         except Exception as e:
             print(f"Error parsing Excel: {e}")
@@ -111,11 +120,7 @@ def parse_student_pin_list(file_bytes: bytes, filename: str) -> List[Dict[str, s
             reader = csv.reader(io.StringIO(content))
             for row in reader:
                 for cell in row:
-                    matches = roll_pattern.findall(cell)
-                    if not matches:
-                        tokens = re.split(r'[\s,;\t|]+', cell)
-                    else:
-                        tokens = matches
+                    tokens = re.split(r'[\s,;\t|/:]+', str(cell))
                     for token in tokens:
                         cleaned = re.sub(r'^[^\w]+|[^\w]+$', '', token).upper()
                         if is_valid_roll_candidate(cleaned) and cleaned not in seen_rolls:
@@ -129,7 +134,7 @@ def parse_student_pin_list(file_bytes: bytes, filename: str) -> List[Dict[str, s
             current_subject = "General"
             with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
                 for page in pdf.pages:
-                    # 1. Try table extraction first (captures structured student lists)
+                    # 1. Try table extraction first (captures multi-column & structured tables)
                     tables = page.extract_tables() or []
                     for table in tables:
                         for row in table:
@@ -145,8 +150,7 @@ def parse_student_pin_list(file_bytes: bytes, filename: str) -> List[Dict[str, s
                             
                             # Scan cells for student roll numbers
                             for cell in row_cells:
-                                matches = roll_pattern.findall(cell)
-                                tokens = matches if matches else re.split(r'[\s,;\t|]+', cell)
+                                tokens = re.split(r'[\s,;\t|/:]+', cell)
                                 for token in tokens:
                                     cleaned = re.sub(r'^[^\w]+|[^\w]+$', '', token).upper()
                                     if is_valid_roll_candidate(cleaned) and cleaned not in seen_rolls:
@@ -156,7 +160,7 @@ def parse_student_pin_list(file_bytes: bytes, filename: str) -> List[Dict[str, s
                                             "subject": current_subject
                                         })
 
-                    # 2. Extract plain text for un-tabled text lines
+                    # 2. Extract plain text for non-table text lines
                     text = page.extract_text()
                     if text:
                         lines = text.split('\n')
@@ -170,8 +174,7 @@ def parse_student_pin_list(file_bytes: bytes, filename: str) -> List[Dict[str, s
                                 current_subject = subj_match.group(1).strip()
                                 continue
                             
-                            matches = roll_pattern.findall(line)
-                            tokens = matches if matches else re.split(r'[\s,;\t|]+', line)
+                            tokens = re.split(r'[\s,;\t|/:]+', line)
                             for token in tokens:
                                 cleaned = re.sub(r'^[^\w]+|[^\w]+$', '', token).upper()
                                 if is_valid_roll_candidate(cleaned) and cleaned not in seen_rolls:
