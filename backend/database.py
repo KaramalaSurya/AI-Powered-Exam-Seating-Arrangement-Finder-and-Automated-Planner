@@ -99,7 +99,7 @@ class UnifiedCursor:
         if row is None:
             return None
         if isinstance(row, sqlite3.Row):
-            return dict(row)
+            return DictRow(dict(row))
         if isinstance(row, dict):
             return DictRow(row)
         if hasattr(self._cursor, 'description') and self._cursor.description:
@@ -115,7 +115,7 @@ class UnifiedCursor:
         res = []
         for r in rows:
             if isinstance(r, sqlite3.Row):
-                res.append(dict(r))
+                res.append(DictRow(dict(r)))
             elif isinstance(r, dict):
                 res.append(DictRow(r))
             elif hasattr(self._cursor, 'description') and self._cursor.description:

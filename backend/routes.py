@@ -276,6 +276,8 @@ def update_session_status(session_id: int, data: SessionUpdate):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
+        if data.is_active:
+            cursor.execute("UPDATE sessions SET is_active = 0 WHERE id != ?", (session_id,))
         cursor.execute("UPDATE sessions SET is_active = ? WHERE id = ?", (1 if data.is_active else 0, session_id))
         conn.commit()
     finally:
@@ -953,14 +955,14 @@ def get_active_slots_for_students():
 
         # Fetch seating ranges for active sessions
         cursor.execute(f"""
-            SELECT sr.roll_prefix, sr.start_num, sr.end_num, sr.subject, COALESCE(r.room_name, 'Hall 1') as room_name
+            SELECT sr.session_id, sr.roll_prefix, sr.start_num, sr.end_num, sr.subject, COALESCE(r.room_name, 'Hall 1') as room_name
             FROM seating_ranges sr
             LEFT JOIN rooms r ON sr.room_id = r.id
             WHERE sr.session_id IN ({placeholders})
         """, active_session_ids)
         all_session_ranges = [dict(row) for row in cursor.fetchall()]
 
-        cursor.execute(f"SELECT roll_number, subject FROM student_registrations WHERE session_id IN ({placeholders})", active_session_ids)
+        cursor.execute(f"SELECT session_id, roll_number, subject FROM student_registrations WHERE session_id IN ({placeholders})", active_session_ids)
         all_regs = [dict(row) for row in cursor.fetchall()]
 
         active_slots = []
@@ -971,12 +973,12 @@ def get_active_slots_for_students():
             subject = s["subject"]
             sess_name = session_map.get(sess_id, "Active Session")
 
-            regs_for_subject = [r for r in all_regs if is_subject_match(r["subject"], subject)]
+            regs_for_subject = [r for r in all_regs if r["session_id"] == sess_id and is_subject_match(r["subject"], subject)]
 
             matching_slot_ranges = []
             rooms_set = set()
             for r_item in all_session_ranges:
-                if is_subject_match(r_item["subject"], subject):
+                if r_item["session_id"] == sess_id and is_subject_match(r_item["subject"], subject):
                     matching_slot_ranges.append((r_item["roll_prefix"], r_item["start_num"], r_item["end_num"]))
                     rooms_set.add(r_item["room_name"])
             
