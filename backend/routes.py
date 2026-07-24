@@ -903,7 +903,52 @@ def get_active_slots_for_students():
                 return False
             if s1 == s2:
                 return True
-                
+
+            # Extract parenthesized departments/branches
+            def get_dept(s: str):
+                match = re.search(r'\(([^)]+)\)', s)
+                if match:
+                    return match.group(1).upper().strip()
+                return None
+
+            dept1 = get_dept(s1)
+            dept2 = get_dept(s2)
+
+            def normalize_dept(dept: str) -> str:
+                if not dept:
+                    return ""
+                d = dept.upper().strip()
+                if any(k in d for k in ["ARTIFICIAL INTELLIGENCE", "CAI", "CSE-AI", "CSE AI"]):
+                    return "CAI"
+                if any(k in d for k in ["COMPUTER SCIENCE", "CSE"]):
+                    return "CSE"
+                if any(k in d for k in ["ELECTRONICS", "ECE"]):
+                    return "ECE"
+                if any(k in d for k in ["ELECTRICAL", "EEE"]):
+                    return "EEE"
+                if any(k in d for k in ["MECHANICAL", "MECH"]):
+                    return "MECH"
+                if any(k in d for k in ["CIVIL"]):
+                    return "CIVIL"
+                return d
+
+            dept1_norm = normalize_dept(dept1)
+            dept2_norm = normalize_dept(dept2)
+            if dept1_norm and dept2_norm and dept1_norm != dept2_norm:
+                return False
+
+            # Clean parenthesized department abbreviations to compare the actual subjects
+            s1_clean = re.sub(r'\(.*?\)', '', s1).strip()
+            s2_clean = re.sub(r'\(.*?\)', '', s2).strip()
+
+            # Normalize alphanumeric characters
+            s1_norm = re.sub(r'[^A-Z0-9]', '', s1_clean)
+            s2_norm = re.sub(r'[^A-Z0-9]', '', s2_clean)
+
+            if s1_norm == s2_norm or s1_norm in s2_norm or s2_norm in s1_norm:
+                return True
+
+            # Fallback to the original category mapping check
             def get_branch_category(s: str) -> str:
                 if any(k in s for k in ["ARTIFICIAL INTELLIGENCE", "CAI", "CSE-AI", "CSE AI", "CS-503"]):
                     return "CAI"
@@ -921,10 +966,10 @@ def get_active_slots_for_students():
 
             cat1 = get_branch_category(s1)
             cat2 = get_branch_category(s2)
-            if cat1 in ["CAI", "CSE", "ECE", "EEE", "MECH", "CIVIL"] or cat2 in ["CAI", "CSE", "ECE", "EEE", "MECH", "CIVIL"]:
+            if cat1 in ["CAI", "CSE", "ECE", "EEE", "MECH", "CIVIL"] and cat2 in ["CAI", "CSE", "ECE", "EEE", "MECH", "CIVIL"]:
                 return cat1 == cat2
-                
-            return s1 in s2 or s2 in s1
+
+            return False
 
         combined_schedules = []
         
