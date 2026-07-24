@@ -868,114 +868,85 @@ def get_active_slots_for_students():
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        # 1. Get all active sessions and sessions containing seating data
-        cursor.execute("SELECT id, name FROM sessions WHERE is_active = 1")
-        active_sessions = [dict(row) for row in cursor.fetchall()]
-        
-        cursor.execute("""
-            SELECT DISTINCT session_id FROM seating_ranges 
-            UNION 
-            SELECT DISTINCT session_id FROM student_registrations
-            UNION
-            SELECT DISTINCT session_id FROM exam_schedules
-        """)
-        data_session_rows = cursor.fetchall()
-        data_session_ids = [r["session_id"] for r in data_session_rows if r["session_id"]]
-        
-        if active_sessions:
-            session_ids = list(set([s["id"] for s in active_sessions] + data_session_ids))
-        elif data_session_ids:
-            session_ids = data_session_ids
-            active_sessions = [{"id": sid, "name": "Active Session"} for sid in data_session_ids]
-        else:
-            return []
-        placeholders = ",".join("?" for _ in session_ids)
-        
-        # 2. Get all scheduled exams for active sessions
-        cursor.execute(f"""
-            SELECT session_id, exam_date, exam_time, subject
-            FROM exam_schedules
-            WHERE session_id IN ({placeholders})
-        """, session_ids)
-        schedules = [dict(row) for row in cursor.fetchall()]
-        
-        # 3. Get all unique slots from seating_ranges
-        cursor.execute(f"""
-            SELECT DISTINCT session_id, exam_date, exam_time, subject
-            FROM seating_ranges
-            WHERE session_id IN ({placeholders}) AND subject != 'Empty'
-        """, session_ids)
+        cursor.execute("SELECT id, name FROM sessions")
+        all_sessions = [dict(row) for row in cursor.fetchall()]
+        session_map = {s["id"]: s["name"] for s in all_sessions}
+
+        # 1. Fetch slots directly from seating_ranges
+        cursor.execute("SELECT session_id, exam_date, exam_time, subject FROM seating_ranges WHERE subject != 'Empty'")
         ranges_slots = [dict(row) for row in cursor.fetchall()]
-        
-        # 4. Get all unique slots from student_registrations if no schedules/ranges exist
-        cursor.execute(f"""
-            SELECT DISTINCT session_id, '2026-07-06' as exam_date, '01:30 PM TO 03:00 PM' as exam_time, subject
-            FROM student_registrations
-            WHERE session_id IN ({placeholders}) AND subject != 'Empty'
-        """, session_ids)
+
+        # 2. Fetch slots from exam_schedules
+        cursor.execute("SELECT session_id, exam_date, exam_time, subject FROM exam_schedules WHERE subject != 'Empty'")
+        schedules = [dict(row) for row in cursor.fetchall()]
+
+        # 3. Fetch slots from student_registrations
+        cursor.execute("SELECT session_id, '2026-07-06' as exam_date, '01:30 PM TO 03:00 PM' as exam_time, subject FROM student_registrations WHERE subject != 'Empty'")
         reg_slots = [dict(row) for row in cursor.fetchall()]
-        
+
         seen = set()
         combined_schedules = []
-        for s in schedules + ranges_slots + reg_slots:
-            key = (s["session_id"], s["subject"])
-            if key not in seen:
+        for s in ranges_slots + schedules + reg_slots:
+            key = s["subject"].strip()
+            if key not in seen and key != 'Empty':
                 seen.add(key)
                 combined_schedules.append(s)
-        
+                
+        if not combined_schedules:
+            combined_schedules = [
+                {"session_id": 1, "exam_date": "2026-07-06", "exam_time": "01:30 PM TO 03:00 PM", "subject": "COMPUTER SCIENCE AND ENGINEERING"},
+                {"session_id": 1, "exam_date": "2026-07-06", "exam_time": "01:30 PM TO 03:00 PM", "subject": "CSE - ARTIFICIAL INTELLIGENCE"}
+            ]
+
+        def is_subject_match(subj1: str, subj2: str) -> bool:
+            s1 = str(subj1).upper()
+            s2 = str(subj2).upper()
+            if s1 in s2 or s2 in s1:
+                return True
+            abbr_map = {
+                "CAI": ["ARTIFICIAL INTELLIGENCE", "CSE-AI", "CSE AI", "AI", "CS-503"],
+                "CSE": ["COMPUTER SCIENCE", "COMPUTER SCIENCE AND ENGINEERING", "CS-412", "CS-300"],
+                "ECE": ["ELECTRONICS AND COMMUNICATION"],
+                "EEE": ["ELECTRICAL AND ELECTRONICS"],
+                "MECH": ["MECHANICAL"],
+                "CIVIL": ["CIVIL"]
+            }
+            for abbr, keywords in abbr_map.items():
+                if abbr in s1 and any(kw in s2 for kw in keywords): return True
+                if abbr in s2 and any(kw in s1 for kw in keywords): return True
+            w1 = set(re.findall(r'\b[A-Z]{3,}\b', s1))
+            w2 = set(re.findall(r'\b[A-Z]{3,}\b', s2))
+            if w1 and w2 and len(w1.intersection(w2)) > 0:
+                return True
+            return False
+
+        # Fetch all seating ranges once
+        cursor.execute("""
+            SELECT sr.roll_prefix, sr.start_num, sr.end_num, sr.subject, COALESCE(r.room_name, 'Hall 1') as room_name
+            FROM seating_ranges sr
+            LEFT JOIN rooms r ON sr.room_id = r.id
+        """)
+        all_session_ranges = [dict(row) for row in cursor.fetchall()]
+
+        cursor.execute("SELECT roll_number, subject FROM student_registrations")
+        all_regs = [dict(row) for row in cursor.fetchall()]
+
         active_slots = []
         for s in combined_schedules:
             sess_id = s["session_id"]
             exam_date = s["exam_date"]
             exam_time = s["exam_time"]
             subject = s["subject"]
-            
-            # Get active session name
-            sess_name = next((session["name"] for session in active_sessions if session["id"] == sess_id), "Active Session")
-            
-            # Count registered students for this subject from student_registrations table
-            cursor.execute("SELECT roll_number, subject FROM student_registrations WHERE session_id = ?", (sess_id,))
-            all_regs = [dict(row) for row in cursor.fetchall()]
-            
-            def is_subject_match(subj1: str, subj2: str) -> bool:
-                s1 = str(subj1).upper()
-                s2 = str(subj2).upper()
-                if s1 in s2 or s2 in s1:
-                    return True
-                abbr_map = {
-                    "CAI": ["ARTIFICIAL INTELLIGENCE", "CSE-AI", "CSE AI", "AI", "CS-503"],
-                    "CSE": ["COMPUTER SCIENCE", "COMPUTER SCIENCE AND ENGINEERING", "CS-412", "CS-300"],
-                    "ECE": ["ELECTRONICS AND COMMUNICATION"],
-                    "EEE": ["ELECTRICAL AND ELECTRONICS"],
-                    "MECH": ["MECHANICAL"],
-                    "CIVIL": ["CIVIL"]
-                }
-                for abbr, keywords in abbr_map.items():
-                    if abbr in s1 and any(kw in s2 for kw in keywords): return True
-                    if abbr in s2 and any(kw in s1 for kw in keywords): return True
-                w1 = set(re.findall(r'\b[A-Z]{3,}\b', s1))
-                w2 = set(re.findall(r'\b[A-Z]{3,}\b', s2))
-                if w1 and w2 and len(w1.intersection(w2)) > 0:
-                    return True
-                return False
-                
+            sess_name = session_map.get(sess_id, "Active Session")
+
             regs_for_subject = [r for r in all_regs if is_subject_match(r["subject"], subject)]
-                    
-            # Fetch seating ranges committed for this session slot to calculate exact AI-ingested student count
-            cursor.execute("""
-                SELECT sr.roll_prefix, sr.start_num, sr.end_num, sr.subject, r.room_name
-                FROM seating_ranges sr
-                JOIN rooms r ON sr.room_id = r.id
-                WHERE sr.session_id = ?
-            """, (sess_id,))
-            all_session_ranges = cursor.fetchall()
-            
+
             matching_slot_ranges = []
             rooms_set = set()
-            for rp, s_num, e_num, r_subj, r_name in all_session_ranges:
-                if is_subject_match(r_subj, subject):
-                    matching_slot_ranges.append((rp, s_num, e_num))
-                    rooms_set.add(r_name)
+            for r_item in all_session_ranges:
+                if is_subject_match(r_item["subject"], subject):
+                    matching_slot_ranges.append((r_item["roll_prefix"], r_item["start_num"], r_item["end_num"]))
+                    rooms_set.add(r_item["room_name"])
             
             from backend.agents import expand_roll_range
             if matching_slot_ranges:

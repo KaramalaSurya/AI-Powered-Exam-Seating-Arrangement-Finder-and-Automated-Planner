@@ -252,42 +252,42 @@ export default function StudentSearch() {
       </div>
 
       {/* Active Exam Sessions Status Dashboard */}
-      {activeSlots.length > 0 && (
-        <div style={{ marginTop: '0.5rem' }}>
-          {/* Header block with legend */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
-            <div>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
-                Active Exam Sessions
-              </h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', margin: '0.2rem 0 0 0' }}>
-                Real-time status of departmental seating arrangements.
-              </p>
-            </div>
-            
-            {/* Status Legend indicators */}
-            <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem', fontWeight: 600 }}>
-              <span className="badge badge-success" style={{ padding: '0.35rem 0.75rem' }}>
-                <span style={{ width: '6px', height: '6px', background: 'var(--accent)', borderRadius: '50%', display: 'inline-block' }} />
-                Seating Published
-              </span>
-              <span style={{ 
-                background: '#f1f5f9', 
-                color: 'var(--text-muted)', 
-                border: '1px solid var(--border-color)', 
-                padding: '0.35rem 0.75rem', 
-                borderRadius: '30px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem'
-              }}>
-                <span style={{ width: '6px', height: '6px', background: '#94a3b8', borderRadius: '50%', display: 'inline-block' }} />
-                Draft / Processing
-              </span>
-            </div>
+      <div style={{ marginTop: '0.5rem' }}>
+        {/* Header block with legend */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+          <div>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
+              Active Exam Sessions
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', margin: '0.2rem 0 0 0' }}>
+              Real-time status of departmental seating arrangements.
+            </p>
           </div>
+          
+          {/* Status Legend indicators */}
+          <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem', fontWeight: 600 }}>
+            <span className="badge badge-success" style={{ padding: '0.35rem 0.75rem' }}>
+              <span style={{ width: '6px', height: '6px', background: 'var(--accent)', borderRadius: '50%', display: 'inline-block' }} />
+              Seating Published
+            </span>
+            <span style={{ 
+              background: '#f1f5f9', 
+              color: 'var(--text-muted)', 
+              border: '1px solid var(--border-color)', 
+              padding: '0.35rem 0.75rem', 
+              borderRadius: '30px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem'
+            }}>
+              <span style={{ width: '6px', height: '6px', background: '#94a3b8', borderRadius: '50%', display: 'inline-block' }} />
+              Draft / Processing
+            </span>
+          </div>
+        </div>
 
-          {/* Cards Grid */}
+        {/* Cards Grid */}
+        {activeSlots.length > 0 ? (
           <div style={{ 
             display: 'grid', 
             gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
@@ -311,30 +311,35 @@ export default function StudentSearch() {
                 >
                   <div>
                     {/* Header: Department + Status Badge */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                        {slot.department}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                        {slot.department} • {slot.subject_code}
                       </span>
-                      {isPublished ? (
-                        <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>
-                          <CheckCircle2 size={12} /> Published
-                        </span>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <Loader2 size={12} className="spinner" /> Processing
-                        </span>
-                      )}
+                      <span className={isPublished ? "badge badge-success" : "badge"} style={{ fontSize: '0.7rem' }}>
+                        {slot.status}
+                      </span>
                     </div>
 
                     {/* Course Code & Title */}
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 0.4rem 0', color: 'var(--text-main)', lineHeight: 1.35 }}>
-                      {slot.subject_code}: {slot.subject_name}
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>
+                      {slot.subject_name}
                     </h3>
                     
-                    {/* Exam Location */}
-                    <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <MapPin size={14} style={{ color: 'var(--primary)' }} /> {slot.exam_hall}
-                    </p>
+                    {/* Exam Location & Details */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Calendar size={14} style={{ color: 'var(--primary)' }} />
+                        <span>Date: <strong>{slot.exam_date}</strong></span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Clock size={14} style={{ color: 'var(--primary)' }} />
+                        <span>Slot: <strong>{slot.exam_time}</strong></span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <MapPin size={14} style={{ color: 'var(--primary)' }} />
+                        <span>{slot.exam_hall}</span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Footer Stats section */}
@@ -362,8 +367,14 @@ export default function StudentSearch() {
               );
             })}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', borderRadius: '12px' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
+              Connecting to Exam Branch status system...
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Error Message */}
       {error && (
