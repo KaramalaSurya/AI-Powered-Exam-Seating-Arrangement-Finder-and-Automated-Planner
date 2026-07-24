@@ -168,6 +168,9 @@ def search_student_seating(
     if not session_ids:
         conn.close()
         raise HTTPException(status_code=404, detail="No active exam session found.")
+        
+    cursor.execute(f"SELECT id, name FROM sessions WHERE id IN ({','.join('?' for _ in session_ids)})", session_ids)
+    active_sessions = [dict(row) for row in cursor.fetchall()]
     
     # 2. Fetch all ranges for active sessions to filter in Python
     placeholders = ",".join("?" for _ in session_ids)
