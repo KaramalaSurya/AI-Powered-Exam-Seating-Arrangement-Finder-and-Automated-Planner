@@ -167,7 +167,9 @@ def search_student_seating(
             COALESCE(r.students_per_bench, 1) as students_per_bench,
             COALESCE(r.filling_strategy, 'serpentine') as filling_strategy
         FROM seating_ranges sr
+        JOIN sessions s ON sr.session_id = s.id
         LEFT JOIN rooms r ON sr.room_id = r.id
+        WHERE s.is_active = 1
     """
     cursor.execute(query)
     all_ranges = [dict(row) for row in cursor.fetchall()]
@@ -868,20 +870,26 @@ def get_active_slots_for_students():
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT id, name FROM sessions")
-        all_sessions = [dict(row) for row in cursor.fetchall()]
-        session_map = {s["id"]: s["name"] for s in all_sessions}
+        cursor.execute("SELECT id, name FROM sessions WHERE is_active = 1")
+        active_sessions = [dict(row) for row in cursor.fetchall()]
+        if not active_sessions:
+            return []
+            
+        active_session_ids = [s["id"] for s in active_sessions]
+        session_map = {s["id"]: s["name"] for s in active_sessions}
 
-        # 1. Fetch slots directly from seating_ranges
-        cursor.execute("SELECT session_id, exam_date, exam_time, subject FROM seating_ranges WHERE subject != 'Empty'")
+        placeholders = ",".join("?" for _ in active_session_ids)
+
+        # 1. Fetch slots directly from seating_ranges for active sessions
+        cursor.execute(f"SELECT session_id, exam_date, exam_time, subject FROM seating_ranges WHERE subject != 'Empty' AND session_id IN ({placeholders})", active_session_ids)
         ranges_slots = [dict(row) for row in cursor.fetchall()]
 
-        # 2. Fetch slots from exam_schedules
-        cursor.execute("SELECT session_id, exam_date, exam_time, subject FROM exam_schedules WHERE subject != 'Empty'")
+        # 2. Fetch slots from exam_schedules for active sessions
+        cursor.execute(f"SELECT session_id, exam_date, exam_time, subject FROM exam_schedules WHERE subject != 'Empty' AND session_id IN ({placeholders})", active_session_ids)
         schedules = [dict(row) for row in cursor.fetchall()]
 
-        # 3. Fetch slots from student_registrations
-        cursor.execute("SELECT session_id, '2026-07-06' as exam_date, '01:30 PM TO 03:00 PM' as exam_time, subject FROM student_registrations WHERE subject != 'Empty'")
+        # 3. Fetch slots from student_registrations for active sessions
+        cursor.execute(f"SELECT session_id, '2026-07-06' as exam_date, '01:30 PM TO 03:00 PM' as exam_time, subject FROM student_registrations WHERE subject != 'Empty' AND session_id IN ({placeholders})", active_session_ids)
         reg_slots = [dict(row) for row in cursor.fetchall()]
 
         seen = set()
@@ -893,10 +901,7 @@ def get_active_slots_for_students():
                 combined_schedules.append(s)
                 
         if not combined_schedules:
-            combined_schedules = [
-                {"session_id": 1, "exam_date": "2026-07-06", "exam_time": "01:30 PM TO 03:00 PM", "subject": "COMPUTER SCIENCE AND ENGINEERING"},
-                {"session_id": 1, "exam_date": "2026-07-06", "exam_time": "01:30 PM TO 03:00 PM", "subject": "CSE - ARTIFICIAL INTELLIGENCE"}
-            ]
+            return []
 
         def is_subject_match(subj1: str, subj2: str) -> bool:
             s1 = str(subj1).upper()
@@ -920,15 +925,16 @@ def get_active_slots_for_students():
                 return True
             return False
 
-        # Fetch all seating ranges once
-        cursor.execute("""
+        # Fetch seating ranges for active sessions
+        cursor.execute(f"""
             SELECT sr.roll_prefix, sr.start_num, sr.end_num, sr.subject, COALESCE(r.room_name, 'Hall 1') as room_name
             FROM seating_ranges sr
             LEFT JOIN rooms r ON sr.room_id = r.id
-        """)
+            WHERE sr.session_id IN ({placeholders})
+        """, active_session_ids)
         all_session_ranges = [dict(row) for row in cursor.fetchall()]
 
-        cursor.execute("SELECT roll_number, subject FROM student_registrations")
+        cursor.execute(f"SELECT roll_number, subject FROM student_registrations WHERE session_id IN ({placeholders})", active_session_ids)
         all_regs = [dict(row) for row in cursor.fetchall()]
 
         active_slots = []

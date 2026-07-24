@@ -28,6 +28,7 @@ export default function StudentSearch() {
   const [error, setError] = useState('');
   const [activeSession, setActiveSession] = useState('');
   const [activeSlots, setActiveSlots] = useState([]);
+  const [slotsLoading, setSlotsLoading] = useState(true);
 
   useEffect(() => {
     const fetchActiveSession = async () => {
@@ -45,14 +46,20 @@ export default function StudentSearch() {
     };
     
     const fetchActiveSlots = async () => {
+      setSlotsLoading(true);
       try {
         const res = await fetch(`${API_BASE_URL}/api/student/active-slots`);
         const data = await res.json();
         if (Array.isArray(data)) {
           setActiveSlots(data);
+        } else {
+          setActiveSlots([]);
         }
       } catch (e) {
         console.error('Failed to fetch active slots:', e);
+        setActiveSlots([]);
+      } finally {
+        setSlotsLoading(false);
       }
     };
 
@@ -287,7 +294,14 @@ export default function StudentSearch() {
         </div>
 
         {/* Cards Grid */}
-        {activeSlots.length > 0 ? (
+        {slotsLoading ? (
+          <div className="glass-panel" style={{ padding: '2.5rem', textAlign: 'center', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+            <Loader2 className="spinner" size={24} style={{ color: 'var(--primary)' }} />
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
+              Connecting to Exam Branch status system...
+            </p>
+          </div>
+        ) : activeSlots.length > 0 ? (
           <div style={{ 
             display: 'grid', 
             gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
@@ -368,9 +382,13 @@ export default function StudentSearch() {
             })}
           </div>
         ) : (
-          <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', borderRadius: '12px' }}>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
-              Connecting to Exam Branch status system...
+          <div className="glass-panel" style={{ padding: '2.5rem 1.5rem', textAlign: 'center', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.7)' }}>
+            <Calendar size={36} style={{ color: 'var(--text-muted)', opacity: 0.5, marginBottom: '0.75rem' }} />
+            <h3 style={{ margin: '0 0 0.35rem 0', color: 'var(--text-main)', fontSize: '1.05rem', fontWeight: 700 }}>
+              No Active Exam Sessions
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
+              There are currently no active examination sessions published. Seating details will be displayed here once an exam session is activated by the administrator.
             </p>
           </div>
         )}
