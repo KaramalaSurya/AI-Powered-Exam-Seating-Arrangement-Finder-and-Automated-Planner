@@ -66,9 +66,7 @@ function expandRangeList(prefix, startStr, endStr) {
 
 export default function AdminPortal({ token, onLogout }) {
   const fetch = async (url, options = {}) => {
-    const targetUrl = url.startsWith('http://localhost:8085') 
-      ? url.replace('http://localhost:8085', API_BASE_URL) 
-      : url;
+    const targetUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
     try {
       const res = await window.fetch(targetUrl, {
         ...options,
@@ -174,7 +172,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
   const fetchRegistrationSubjects = async (sessId) => {
     if (!sessId) return;
     try {
-      const res = await fetch(`http://localhost:8085/api/admin/registration-subjects?session_id=${sessId}`);
+      const res = await fetch(`/api/admin/registration-subjects?session_id=${sessId}`);
       const data = await res.json();
       setRegistrationSubjects(data);
     } catch (e) {
@@ -198,7 +196,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
     
     setSchedulingCustomSlot(true);
     try {
-      const res = await fetch('http://localhost:8085/api/admin/allocation/add-slot', {
+      const res = await fetch('/api/admin/allocation/add-slot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -218,7 +216,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
         setShowCustomSlotForm(false);
         // Refresh slots and status
         await fetchPlannerStatus(activeSessionId);
-        const refreshRes = await fetch(`http://localhost:8085/api/admin/allocation/slots?session_id=${activeSessionId}`);
+        const refreshRes = await fetch(`/api/admin/allocation/slots?session_id=${activeSessionId}`);
         const freshSlots = await refreshRes.json();
         setSlots(freshSlots);
         const newSlot = freshSlots.find(s => s.exam_date === savedDate && s.exam_time === savedTime);
@@ -242,7 +240,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
   const fetchPlannerStatus = async (sessId) => {
     if (!sessId) return;
     try {
-      const res = await fetch(`http://localhost:8085/api/admin/planner-status?session_id=${sessId}`);
+      const res = await fetch(`/api/admin/planner-status?session_id=${sessId}`);
       const data = await res.json();
       setPlannerStatus(data);
     } catch (e) {
@@ -253,7 +251,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
   const fetchSlots = async (sessId) => {
     if (!sessId) return;
     try {
-      const res = await fetch(`http://localhost:8085/api/admin/allocation/slots?session_id=${sessId}`);
+      const res = await fetch(`/api/admin/allocation/slots?session_id=${sessId}`);
       const data = await res.json();
       setSlots(data);
       if (data.length > 0) {
@@ -294,7 +292,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
     formData.append('file', file);
     formData.append('session_id', activeSessionId);
     try {
-      const res = await fetch('http://localhost:8085/api/admin/ingest-students', {
+      const res = await fetch('/api/admin/ingest-students', {
         method: 'POST',
         body: formData
       });
@@ -325,7 +323,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
     formData.append('file', file);
     formData.append('session_id', activeSessionId);
     try {
-      const res = await fetch('http://localhost:8085/api/admin/ingest-schedule', {
+      const res = await fetch('/api/admin/ingest-schedule', {
         method: 'POST',
         body: formData
       });
@@ -351,7 +349,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
     }
     setSeedingInventory(true);
     try {
-      const res = await fetch('http://localhost:8085/api/admin/seed-rooms', {
+      const res = await fetch('/api/admin/seed-rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -379,7 +377,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
     setPlanning(true);
     setApprovedSlot(false);
     try {
-      const res = await fetch('http://localhost:8085/api/admin/allocation/run', {
+      const res = await fetch('/api/admin/allocation/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -412,7 +410,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
     if (!selectedSlot) return;
     setApproving(true);
     try {
-      const res = await fetch('http://localhost:8085/api/admin/allocation/approve', {
+      const res = await fetch('/api/admin/allocation/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -444,7 +442,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
     if (!selectedSlot) return;
     try {
       const blockParam = selectedBlockPreview !== 'All' ? `&block=${encodeURIComponent(selectedBlockPreview)}` : '';
-      const url = `http://localhost:8085/api/admin/reports/${endpoint}?session_id=${activeSessionId}&exam_date=${encodeURIComponent(selectedSlot.exam_date)}&exam_time=${encodeURIComponent(selectedSlot.exam_time)}${blockParam}`;
+      const url = `/api/admin/reports/${endpoint}?session_id=${activeSessionId}&exam_date=${encodeURIComponent(selectedSlot.exam_date)}&exam_time=${encodeURIComponent(selectedSlot.exam_time)}${blockParam}`;
       
       const response = await fetch(url);
       if (!response.ok) {
@@ -479,7 +477,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
 
   const fetchStats = async () => {
     try {
-      const res = await fetch('http://localhost:8085/api/admin/dashboard-stats');
+      const res = await fetch('/api/admin/dashboard-stats');
       const data = await res.json();
       setStats(data);
     } catch (e) {
@@ -489,7 +487,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
 
   const fetchSessions = async () => {
     try {
-      const res = await fetch('http://localhost:8085/api/admin/sessions');
+      const res = await fetch('/api/admin/sessions');
       const data = await res.json();
       setSessions(data);
       
@@ -511,7 +509,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
 
   const fetchDbRanges = async (sessId) => {
     try {
-      const res = await fetch(`http://localhost:8085/api/admin/ranges?session_id=${sessId}`);
+      const res = await fetch(`/api/admin/ranges?session_id=${sessId}`);
       const data = await res.json();
       setDbRanges(data);
     } catch (e) {
@@ -521,7 +519,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch('http://localhost:8085/api/admin/settings');
+      const res = await fetch('/api/admin/settings');
       const data = await res.json();
       setGeminiApiKey(data.gemini_api_key);
     } catch (e) {
@@ -531,7 +529,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
 
   const saveSettings = async () => {
     try {
-      const res = await fetch('http://localhost:8085/api/admin/settings', {
+      const res = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gemini_api_key: geminiApiKey })
@@ -548,7 +546,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
   const handleCreateSession = async () => {
     if (!newSessionName.trim()) return;
     try {
-      const res = await fetch('http://localhost:8085/api/admin/sessions', {
+      const res = await fetch('/api/admin/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newSessionName })
@@ -570,7 +568,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
   const handleActivateSession = async (sessId) => {
     setActiveSessionId(sessId);
     try {
-      const res = await fetch(`http://localhost:8085/api/admin/sessions/${sessId}`, {
+      const res = await fetch(`/api/admin/sessions/${sessId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: true })
@@ -590,7 +588,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
 
   const handleToggleSessionActive = async (sessId, isCurrentlyActive) => {
     try {
-      const res = await fetch(`http://localhost:8085/api/admin/sessions/${sessId}`, {
+      const res = await fetch(`/api/admin/sessions/${sessId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !isCurrentlyActive })
@@ -617,7 +615,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
     if (!deleteConfirmId) return;
     setDeletingSession(true);
     try {
-      const res = await fetch(`http://localhost:8085/api/admin/sessions/${deleteConfirmId}`, {
+      const res = await fetch(`/api/admin/sessions/${deleteConfirmId}`, {
         method: 'DELETE'
       });
       if (res.ok) {
@@ -625,7 +623,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
           const remaining = sessions.filter(s => s.id !== deleteConfirmId);
           if (remaining.length > 0) {
             setActiveSessionId(remaining[0].id);
-            await fetch(`http://localhost:8085/api/admin/sessions/${remaining[0].id}`, {
+            await fetch(`/api/admin/sessions/${remaining[0].id}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ is_active: true })
@@ -671,7 +669,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
     formData.append('use_ai', useAiIngestion);
     
     try {
-      const res = await fetch('http://localhost:8085/api/admin/upload', {
+      const res = await fetch('/api/admin/upload', {
         method: 'POST',
         body: formData
       });
@@ -820,7 +818,7 @@ Third Floor: SB-302 (Smart Classroom), SB-303, SB-304, SB-305, SB-306, SB-308, S
     }
     
     try {
-      const res = await fetch('http://localhost:8085/api/admin/save-arrangements', {
+      const res = await fetch('/api/admin/save-arrangements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
