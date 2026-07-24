@@ -80,6 +80,13 @@ def expand_roll_range(prefix: str, start_str: str, end_str: str, padding: int = 
         else:
             char_sets.append([char])
             
+    total_combos = 1
+    for s_set in char_sets:
+        total_combos *= len(s_set)
+        
+    if total_combos > 10000:
+        return [f"{prefix}{start_str}", f"{prefix}{end_str}"]
+            
     combinations = []
     for combo in itertools.product(*char_sets):
         combo_str = "".join(combo)
