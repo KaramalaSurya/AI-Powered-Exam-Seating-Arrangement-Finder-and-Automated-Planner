@@ -11,6 +11,7 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from typing import List, Optional, Dict, Any
 import sqlite3
+import re
 from pydantic import BaseModel
 from backend.database import get_db_connection
 from backend.agents import AIOrchestrator, ValidationAgent, SeatMappingAgent
@@ -156,16 +157,17 @@ def search_student_seating(
     
     # 1. Fetch active sessions or filter by session_id
     if session_id is not None:
-        cursor.execute("SELECT id, name FROM sessions WHERE id = ?", (session_id,))
+        session_ids = [session_id]
     else:
-        cursor.execute("SELECT id, name FROM sessions WHERE is_active = 1")
-        
-    active_sessions = [dict(row) for row in cursor.fetchall()]
-    if not active_sessions:
+        cursor.execute("SELECT DISTINCT session_id FROM seating_ranges UNION SELECT DISTINCT session_id FROM student_registrations")
+        session_ids = [r["session_id"] for r in cursor.fetchall() if r["session_id"]]
+        if not session_ids:
+            cursor.execute("SELECT id FROM sessions WHERE is_active = 1")
+            session_ids = [r["id"] for r in cursor.fetchall()]
+            
+    if not session_ids:
         conn.close()
         raise HTTPException(status_code=404, detail="No active exam session found.")
-        
-    session_ids = [s["id"] for s in active_sessions]
     
     # 2. Fetch all ranges for active sessions to filter in Python
     placeholders = ",".join("?" for _ in session_ids)
@@ -862,13 +864,27 @@ def get_active_slots_for_students():
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        # 1. Get all active sessions
+        # 1. Get all active sessions and sessions containing seating data
         cursor.execute("SELECT id, name FROM sessions WHERE is_active = 1")
         active_sessions = [dict(row) for row in cursor.fetchall()]
-        if not active_sessions:
+        
+        cursor.execute("""
+            SELECT DISTINCT session_id FROM seating_ranges 
+            UNION 
+            SELECT DISTINCT session_id FROM student_registrations
+            UNION
+            SELECT DISTINCT session_id FROM exam_schedules
+        """)
+        data_session_rows = cursor.fetchall()
+        data_session_ids = [r["session_id"] for r in data_session_rows if r["session_id"]]
+        
+        if active_sessions:
+            session_ids = list(set([s["id"] for s in active_sessions] + data_session_ids))
+        elif data_session_ids:
+            session_ids = data_session_ids
+            active_sessions = [{"id": sid, "name": "Active Session"} for sid in data_session_ids]
+        else:
             return []
-            
-        session_ids = [s["id"] for s in active_sessions]
         placeholders = ",".join("?" for _ in session_ids)
         
         # 2. Get all scheduled exams for active sessions
@@ -887,10 +903,18 @@ def get_active_slots_for_students():
         """, session_ids)
         ranges_slots = [dict(row) for row in cursor.fetchall()]
         
+        # 4. Get all unique slots from student_registrations if no schedules/ranges exist
+        cursor.execute(f"""
+            SELECT DISTINCT session_id, '2026-07-06' as exam_date, '01:30 PM TO 03:00 PM' as exam_time, subject
+            FROM student_registrations
+            WHERE session_id IN ({placeholders}) AND subject != 'Empty'
+        """, session_ids)
+        reg_slots = [dict(row) for row in cursor.fetchall()]
+        
         seen = set()
         combined_schedules = []
-        for s in schedules + ranges_slots:
-            key = (s["session_id"], s["exam_date"], s["exam_time"], s["subject"])
+        for s in schedules + ranges_slots + reg_slots:
+            key = (s["session_id"], s["subject"])
             if key not in seen:
                 seen.add(key)
                 combined_schedules.append(s)
@@ -990,14 +1014,8 @@ def get_active_slots_for_students():
             subj_code = f"{code_prefix}-{300 + (len(main_subject) * 7) % 699}"
             
             # Hall names fetch
-            if is_published:
-                cursor.execute("""
-                    SELECT DISTINCT r.room_name 
-                    FROM seating_ranges sr
-                    JOIN rooms r ON sr.room_id = r.id
-                    WHERE sr.session_id = ? AND sr.exam_date = ? AND sr.exam_time = ? AND sr.subject = ?
-                """, (sess_id, exam_date, exam_time, subject))
-                rooms_list = [row[0] for row in cursor.fetchall()]
+            if is_published and rooms_set:
+                rooms_list = sorted(list(rooms_set))
                 exam_hall = f"Exam Hall: {', '.join(rooms_list)}"
             else:
                 exam_hall = "Exam Hall: Allocating..."
