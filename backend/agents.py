@@ -19,14 +19,19 @@ try:
 except ImportError:
     GEMINI_AVAILABLE = False
 
+def fix_ocr_suffix(s: str) -> str:
+    s = str(s).strip().upper()
+    # Auto-correct OCR typo 'O' to digit '0' when preceded by a letter (e.g. RO -> R0, VO -> V0)
+    return re.sub(r'([A-Z])O$', r'\g<1>0', s)
+
 def expand_roll_range(prefix: str, start_str: str, end_str: str, padding: int = 2) -> List[str]:
     """
     Expands a roll range suffix (either numeric, alphanumeric JNTU style, or double letters)
     into a sorted list of full roll numbers.
     """
     prefix = str(prefix).strip()
-    start_str = str(start_str).strip()
-    end_str = str(end_str).strip()
+    start_str = fix_ocr_suffix(start_str)
+    end_str = fix_ocr_suffix(end_str)
     
     if not start_str or not end_str or start_str == "Empty" or end_str == "Empty":
         return []
@@ -38,21 +43,40 @@ def expand_roll_range(prefix: str, start_str: str, end_str: str, padding: int = 
         width = max(len(start_str), padding)
         return [f"{prefix}{str(i).zfill(width)}" for i in range(s, e + 1)]
         
-    # Case 2: Alphanumeric suffixes (usually same length)
+    # Case 2: Letter + Digits (e.g. R0 to S9, V8 to W9, D3 to E6, D01 to D36)
+    m_start = re.match(r'^([A-Z]+)(\d+)$', start_str)
+    m_end = re.match(r'^([A-Z]+)(\d+)$', end_str)
+    if m_start and m_end:
+        l1, d1_str = m_start.groups()
+        l2, d2_str = m_end.groups()
+        width = max(len(d1_str), len(d2_str))
+        
+        if l1 == l2:
+            return [f"{prefix}{l1}{str(i).zfill(width)}" for i in range(int(d1_str), int(d2_str) + 1)]
+            
+        if len(l1) == 1 and len(l2) == 1 and ord(l2) >= ord(l1):
+            results = []
+            for letter_code in range(ord(l1), ord(l2) + 1):
+                cur_letter = chr(letter_code)
+                s_val = int(d1_str) if cur_letter == l1 else 0
+                e_val = int(d2_str) if cur_letter == l2 else (10**width - 1 if width <= 2 else 99)
+                for i in range(s_val, e_val + 1):
+                    results.append(f"{prefix}{cur_letter}{str(i).zfill(width)}")
+            return results
+
+    # Case 3: Double Letters or General Alphanumeric
     if len(start_str) != len(end_str):
-        return [f"{prefix}{start_str}", f"{prefix}{end_str}"]  # Fallback if lengths differ
+        return [f"{prefix}{start_str}", f"{prefix}{end_str}"]
         
     digits = [str(d) for d in range(10)]
     letters = [chr(c) for c in range(ord('A'), ord('Z') + 1)]
     
     char_sets = []
-    for char in start_str:
-        if char.isdigit():
+    for i, char in enumerate(start_str):
+        if char.isdigit() and end_str[i].isdigit():
             char_sets.append(digits)
-        elif char.isupper():
+        elif char.isupper() and end_str[i].isupper():
             char_sets.append(letters)
-        elif char.islower():
-            char_sets.append([c.lower() for c in letters])
         else:
             char_sets.append([char])
             
