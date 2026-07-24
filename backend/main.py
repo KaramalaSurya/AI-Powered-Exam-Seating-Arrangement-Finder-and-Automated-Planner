@@ -1,5 +1,13 @@
-import uvicorn
+import sys
 import os
+from pathlib import Path
+
+# Ensure the root folder (parent of backend) is in sys.path so 'backend.xxx' imports resolve cleanly
+root_dir = str(Path(__file__).resolve().parent.parent)
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+
+import uvicorn
 from dotenv import load_dotenv
 
 # Load environment variables from .env

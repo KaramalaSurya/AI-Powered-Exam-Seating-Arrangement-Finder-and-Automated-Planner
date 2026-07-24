@@ -1,4 +1,13 @@
 # allocation.py
+import sys
+import os
+from pathlib import Path
+
+# Ensure root directory is in sys.path
+root_dir = str(Path(__file__).resolve().parent.parent)
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+
 import sqlite3
 from typing import List, Dict, Any, Tuple
 from backend.seeding import seed_mits_rooms

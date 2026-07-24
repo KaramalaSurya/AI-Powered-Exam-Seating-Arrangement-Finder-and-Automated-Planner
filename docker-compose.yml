@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: seatx-backend
+    ports:
+      - "8085:8085"
+    volumes:
+      # Mount backend folder to persist SQLite database (mits_exam.db) and uploaded files locally
+      - ./backend:/app/backend
+    environment:
+      - PORT=8085
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Build-time environment variable to tell Vite where to query API endpoints.
+        # Change this to your public API domain or IP if deploying on a cloud server.
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:8085}
+    container_name: seatx-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always

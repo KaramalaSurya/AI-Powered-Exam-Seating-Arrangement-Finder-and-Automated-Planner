@@ -1,0 +1,23 @@
+# Render Blueprint configuration for SeatX (Backend Web Service + Frontend Static Site)
+services:
+  # 1. Backend FastAPI Service
+  - type: web
+    name: seatx-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHONPATH
+        value: .
+
+  # 2. Frontend React Vite Static Site
+  - type: static
+    name: seatx-frontend
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

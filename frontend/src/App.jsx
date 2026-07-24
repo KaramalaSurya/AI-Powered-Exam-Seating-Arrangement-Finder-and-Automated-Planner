@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import StudentSearch from './components/StudentSearch';
 import AdminPortal from './components/AdminPortal';
 import AdminLogin from './components/AdminLogin';
-import { API_BASE_URL } from './config';
+import { API_BASE_URL, IS_LOCAL_FALLBACK } from './config';
 
 export default function App() {
   const [view, setView] = useState('student'); // 'student', 'admin'
@@ -10,21 +10,28 @@ export default function App() {
   const [adminToken, setAdminToken] = useState(localStorage.getItem('admin_token') || '');
 
   useEffect(() => {
-    // Check if backend API is online
-    const checkBackend = async () => {
+    let timer;
+    // Check if backend API is online with retry for Render cold starts
+    const checkBackend = async (attempts = 0) => {
       try {
-        const res = await fetch(`${API_BASE_URL}/`);
+        const res = await fetch(`${API_BASE_URL}/`, { cache: 'no-store' });
         const data = await res.json();
         if (data.status === 'online') {
           setBackendStatus('online');
-        } else {
-          setBackendStatus('offline');
+          return;
         }
       } catch (e) {
-        setBackendStatus('offline');
+        // Render free tier backend might be waking up from sleep mode
+        if (attempts < 3) {
+          setBackendStatus('checking');
+          timer = setTimeout(() => checkBackend(attempts + 1), 4000);
+          return;
+        }
       }
+      setBackendStatus('offline');
     };
     checkBackend();
+    return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -56,7 +63,15 @@ export default function App() {
               borderRadius: '50%',
               display: 'inline-block'
             }} />
-            <span>API ENDPOINT: {backendStatus === 'online' ? 'ONLINE (LATENCY: <10ms)' : backendStatus === 'offline' ? 'OFFLINE' : 'CHECKING'}</span>
+            <span>
+              API ENDPOINT: {
+                backendStatus === 'online' 
+                  ? `ONLINE (${API_BASE_URL})` 
+                  : backendStatus === 'offline' 
+                    ? `OFFLINE (${API_BASE_URL})` 
+                    : 'WAKING UP BACKEND...'
+              }
+            </span>
           </div>
         </div>
       )}

@@ -1,6 +1,14 @@
+import sys
+import os
+from pathlib import Path
+
+# Ensure root directory is in sys.path
+root_dir = str(Path(__file__).resolve().parent.parent)
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+
 import unittest
 import sqlite3
-import os
 import shutil
 from backend.agents import SeatMappingAgent, ValidationAgent
 from backend.database import get_db_connection, init_db, DATABASE_FILE
