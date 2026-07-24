@@ -93,9 +93,6 @@ export default function App() {
                 <span style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.03em', lineHeight: 1 }}>
                   SeatX
                 </span>
-                <span className="badge badge-info" style={{ fontSize: '0.65rem', padding: '0.15rem 0.45rem' }}>
-                  PRO
-                </span>
               </div>
               <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', margin: '0.2rem 0 0 0', lineHeight: 1.2 }}>
                 AI-Powered Examination Seating & Automated Planner
