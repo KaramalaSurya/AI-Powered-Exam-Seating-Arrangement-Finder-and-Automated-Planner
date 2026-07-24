@@ -896,35 +896,6 @@ def get_active_slots_for_students():
         cursor.execute(f"SELECT session_id, 'TBD' as exam_date, 'TBA' as exam_time, subject FROM student_registrations WHERE subject != 'Empty' AND session_id IN ({placeholders})", active_session_ids)
         reg_slots = [dict(row) for row in cursor.fetchall()]
 
-        seen_keys = set()
-        combined_schedules = []
-        
-        def normalize_subject_key(subj_str: str) -> str:
-            s = str(subj_str).upper().strip()
-            return re.sub(r'[^A-Z0-9]', '', s)
-
-        # Prioritize ranges_slots and schedules over fallback reg_slots
-        for s in ranges_slots + schedules:
-            subj = s.get("subject", "").strip()
-            if not subj or subj.upper() == 'EMPTY':
-                continue
-            key = (s["session_id"], normalize_subject_key(subj))
-            if key not in seen_keys:
-                seen_keys.add(key)
-                combined_schedules.append(s)
-
-        for s in reg_slots:
-            subj = s.get("subject", "").strip()
-            if not subj or subj.upper() == 'EMPTY':
-                continue
-            key = (s["session_id"], normalize_subject_key(subj))
-            if key not in seen_keys:
-                seen_keys.add(key)
-                combined_schedules.append(s)
-
-        if not combined_schedules:
-            return []
-
         def is_subject_match(subj1: str, subj2: str) -> bool:
             s1 = str(subj1).upper().strip()
             s2 = str(subj2).upper().strip()
@@ -954,6 +925,40 @@ def get_active_slots_for_students():
                 return cat1 == cat2
                 
             return s1 in s2 or s2 in s1
+
+        combined_schedules = []
+        
+        # Prioritize ranges_slots and schedules over fallback reg_slots
+        for s in ranges_slots + schedules:
+            subj = s.get("subject", "").strip()
+            if not subj or subj.upper() == 'EMPTY':
+                continue
+            
+            is_dup = False
+            for existing in combined_schedules:
+                if existing["session_id"] == s["session_id"] and is_subject_match(existing["subject"], subj):
+                    is_dup = True
+                    break
+            
+            if not is_dup:
+                combined_schedules.append(s)
+
+        for s in reg_slots:
+            subj = s.get("subject", "").strip()
+            if not subj or subj.upper() == 'EMPTY':
+                continue
+            
+            is_dup = False
+            for existing in combined_schedules:
+                if existing["session_id"] == s["session_id"] and is_subject_match(existing["subject"], subj):
+                    is_dup = True
+                    break
+            
+            if not is_dup:
+                combined_schedules.append(s)
+
+        if not combined_schedules:
+            return []
 
         # Fetch seating ranges for active sessions
         cursor.execute(f"""
