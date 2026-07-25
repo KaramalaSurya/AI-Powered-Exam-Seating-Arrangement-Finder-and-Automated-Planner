@@ -108,6 +108,18 @@ export default function StudentSearch() {
       return parenMatch[1];
     }
     const lower = subject.toLowerCase();
+    if (lower.includes('artificial intelligence') || lower.includes('cse-ai') || lower.includes('cse ai') || lower.includes('cai')) {
+      return 'CSE-AI';
+    }
+    if (lower.includes('data science') || lower.includes('cse-ds') || lower.includes('cse ds')) {
+      return 'CSE-DS';
+    }
+    if (lower.includes('cyber security') || lower.includes('cse-sec') || lower.includes('cse sec')) {
+      return 'CSE-SEC';
+    }
+    if (lower.includes('internet of things') || lower.includes('cse-iot') || lower.includes('cse iot')) {
+      return 'CSE-IOT';
+    }
     if (lower.includes('machine learning')) return 'ML';
     if (lower.includes('deep learning')) return 'DL';
     if (lower.includes('computer networks')) return 'CN';
@@ -116,6 +128,7 @@ export default function StudentSearch() {
     if (lower.includes('discrete mathematics')) return 'DM';
     return subject.substring(0, 8);
   };
+
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
